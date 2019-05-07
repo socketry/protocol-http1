@@ -1,0 +1,66 @@
+PATH
+  remote: .
+  specs:
+    protocol-http1 (0.1.0)
+      protocol-http
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ast (2.4.0)
+    async (1.17.1)
+      console (~> 1.0)
+      nio4r (~> 2.3)
+      timers (~> 4.1)
+    async-http (0.38.3)
+      async (~> 1.14)
+      async-io (~> 1.18)
+      http-protocol (~> 0.17)
+    async-io (1.23.0)
+      async (~> 1.14)
+    async-rest (0.7.3)
+      async-http (~> 0.37)
+      http-protocol (~> 0.14)
+    console (1.2.3)
+    covered (0.13.1)
+      async-rest
+      console (~> 1.0)
+      msgpack
+      parser
+    diff-lcs (1.3)
+    http-hpack (0.1.1)
+    http-protocol (0.17.1)
+      http-hpack (~> 0.1.0)
+    msgpack (1.2.10)
+    nio4r (2.3.1)
+    parser (2.6.3.0)
+      ast (~> 2.4.0)
+    protocol-http (0.18.0)
+    rake (10.5.0)
+    rspec (3.8.0)
+      rspec-core (~> 3.8.0)
+      rspec-expectations (~> 3.8.0)
+      rspec-mocks (~> 3.8.0)
+    rspec-core (3.8.0)
+      rspec-support (~> 3.8.0)
+    rspec-expectations (3.8.3)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.8.0)
+    rspec-mocks (3.8.0)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.8.0)
+    rspec-support (3.8.0)
+    timers (4.3.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler (~> 1.17)
+  covered
+  protocol-http1!
+  rake (~> 10.0)
+  rspec (~> 3.0)
+
+BUNDLED WITH
+   1.17.3
