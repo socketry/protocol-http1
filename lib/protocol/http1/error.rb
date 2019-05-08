@@ -22,10 +22,11 @@ require 'protocol/http/error'
 
 module Protocol
 	module HTTP1
-		class BadRequest < HTTP::BadRequest
+		class Error < HTTP::Error
 		end
 		
-		class ProtocolError < HTTP::ProtocolError
+		# The request was parsed correctly, but was invalid for some other reason.
+		class BadRequest < Error
 		end
 	end
 end

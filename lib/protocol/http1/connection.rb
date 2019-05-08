@@ -249,7 +249,7 @@ module Protocol
 					chunk_length += chunk.bytesize
 					
 					if chunk_length > length
-						raise ProtocolError, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
+						raise Error, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
 					end
 					
 					@stream.write(chunk)
@@ -258,7 +258,7 @@ module Protocol
 				@stream.flush
 				
 				if chunk_length != length
-					raise ProtocolError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
+					raise Error, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
 				end
 			end
 			
