@@ -118,7 +118,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			
 			expect do
 				server.read_request
-			end.to raise_error(Protocol::HTTP::BadRequest)
+			end.to raise_error(Protocol::HTTP1::BadRequest)
 		end
 	end
 end
