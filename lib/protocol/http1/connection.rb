@@ -84,8 +84,9 @@ module Protocol
 			end
 			
 			def upgrade!(protocol)
-				@upgrade = protocol
 				@persistent = false
+				
+				@upgrade = protocol
 				
 				return @stream
 			end
@@ -212,14 +213,17 @@ module Protocol
 				return chunk
 			end
 			
-			def write_upgrade_body
+			def write_upgrade_body(body = nil)
+				# Any time we are potentially closing the stream, we should ensure no further requests are processed:
+				@persistent = false
+				
 				@stream.write("\r\n")
 				@stream.flush
 				
-				return @stream unless block_given?
+				return @stream unless body
 				
 				begin
-					yield @stream
+					body.call(@stream)
 				rescue
 					@stream.close_write
 				end
@@ -307,7 +311,7 @@ module Protocol
 				if body.nil? or body.empty?
 					write_empty_body(body)
 				elsif body.respond_to?(:call)
-					write_upgrade_body(&body)
+					write_upgrade_body(body)
 				elsif length = body.length
 					write_fixed_length_body(body, length, head)
 				elsif @persistent and chunked
