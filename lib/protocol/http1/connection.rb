@@ -141,18 +141,18 @@ module Protocol
 				end
 			end
 			
-			def each_line
-				while line = read_line
-					yield line
-				end
+			def read_line?
+				@stream.gets(CRLF, chomp: true)
 			end
 			
 			def read_line
-				@stream.gets(CRLF, chomp: true) or raise EOFError
+				read_line? or raise EOFError
 			end
 			
 			def read_request
-				method, path, version = read_line.split(/\s+/, 3)
+				return unless line = read_line?
+				
+				method, path, version = line.split(/\s+/, 3)
 				headers = read_headers
 				
 				@persistent = persistent?(version, headers)
@@ -184,7 +184,7 @@ module Protocol
 			def read_headers
 				fields = []
 				
-				self.each_line do |line|
+				while line = read_line
 					if line =~ /^([a-zA-Z\-\d]+):\s*(.+?)\s*$/
 						fields << [$1, $2]
 					else
