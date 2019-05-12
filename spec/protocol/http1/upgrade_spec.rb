@@ -31,6 +31,9 @@ RSpec.describe Protocol::HTTP1::Connection do
 		let(:body) do
 			lambda do |wrapper|
 				wrapper.write "Hello World"
+				
+				# This is called here to ensure the spec passes. Otherwise, it's up to the server to do this once the upgrade body is finished.
+				wrapper.close
 			end
 		end
 		
