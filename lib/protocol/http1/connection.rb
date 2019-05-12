@@ -224,7 +224,7 @@ module Protocol
 				
 				begin
 					body.call(@stream)
-				rescue
+				ensure
 					@stream.close_write
 				end
 			end
@@ -343,6 +343,10 @@ module Protocol
 				read_remainder_body
 			end
 			
+			def read_upgrade_body
+				read_remainder_body
+			end
+			
 			def read_remainder_body
 				@stream.read
 			end
@@ -426,6 +430,11 @@ module Protocol
 					else
 						raise BadRequest, "Invalid content length: #{content_length}"
 					end
+				end
+				
+				if upgrade = upgrade?(headers)
+					@upgrade = upgrade
+					return read_upgrade_body
 				end
 				
 				if remainder
