@@ -220,13 +220,9 @@ module Protocol
 				@stream.write("\r\n")
 				@stream.flush
 				
-				return @stream unless body
+				body.call(@stream) if body
 				
-				begin
-					body.call(@stream)
-				ensure
-					@stream.close_write
-				end
+				return @stream
 			end
 			
 			def write_empty_body(body)
