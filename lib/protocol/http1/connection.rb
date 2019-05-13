@@ -128,7 +128,8 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, body = nil, head = false)
-				@stream.write("#{version} #{status}\r\n")
+				# Safari WebSockets break if no reason is given.
+				@stream.write("#{version} #{status} .\r\n")
 				
 				write_headers(headers)
 				write_connection_header(version)
