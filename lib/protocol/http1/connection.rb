@@ -45,7 +45,6 @@ module Protocol
 				@stream = stream
 				
 				@persistent = persistent
-				@upgrade = nil
 				
 				@count = 0
 			end
@@ -55,15 +54,12 @@ module Protocol
 			# Whether the connection is persistent.
 			attr :persistent
 			
-			# Whether the connection has been upgraded, and to what.
-			attr :upgrade
-			
 			# The number of requests processed.
 			attr :count
 			
 			def upgrade?(headers)
 				if upgrade = headers[UPGRADE]
-					return upgrade.first
+					return upgrade
 				end
 			end
 			
@@ -83,25 +79,17 @@ module Protocol
 				end
 			end
 			
-			def upgrade!(protocol)
-				@persistent = false
-				
-				@upgrade = protocol
-				
-				return @stream
-			end
-			
 			# Write the appropriate header for connection persistence.
 			def write_connection_header(version)
-				if @upgrade
-					@stream.write("connection: upgrade\r\nupgrade: #{@upgrade}\r\n")
+				if version == HTTP10
+					@stream.write("connection: keep-alive\r\n") if @persistent
 				else
-					if version == HTTP10
-						@stream.write("connection: keep-alive\r\n") if @persistent
-					else
-						@stream.write("connection: close\r\n") unless @persistent
-					end
+					@stream.write("connection: close\r\n") unless @persistent
 				end
+			end
+			
+			def write_upgrade_header(upgrade)
+				@stream.write("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
 			end
 			
 			# Effectively close the connection and return the underlying IO.
@@ -124,7 +112,6 @@ module Protocol
 				@stream.write("host: #{authority}\r\n")
 				
 				write_headers(headers)
-				write_connection_header(version)
 			end
 			
 			def write_response(version, status, headers, body = nil, head = false)
@@ -132,8 +119,8 @@ module Protocol
 				@stream.write("#{version} #{status} .\r\n")
 				
 				write_headers(headers)
-				write_connection_header(version)
-				write_body(body, version == HTTP11, head)
+				
+				write_body(version, body, head)
 			end
 			
 			def write_headers(headers)
@@ -157,7 +144,6 @@ module Protocol
 				headers = read_headers
 				
 				@persistent = persistent?(version, headers)
-				@upgrade = upgrade?(headers)
 				
 				body = read_request_body(headers)
 				
@@ -214,7 +200,9 @@ module Protocol
 				return chunk
 			end
 			
-			def write_upgrade_body(body = nil)
+			def write_upgrade_body(protocol, body = nil)
+				write_upgrade_header(protocol)
+				
 				# Any time we are potentially closing the stream, we should ensure no further requests are processed:
 				@persistent = false
 				
@@ -304,14 +292,16 @@ module Protocol
 				@stream.close_write
 			end
 			
-			def write_body(body, chunked = true, head = false)
+			def write_body(version, body, head = false)
+				write_connection_header(version)
+				
 				if body.nil? or body.empty?
 					write_empty_body(body)
 				elsif body.respond_to?(:call)
 					write_upgrade_body(body)
 				elsif length = body.length
 					write_fixed_length_body(body, length, head)
-				elsif @persistent and chunked
+				elsif @persistent and version == HTTP11
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
 					write_chunked_body(body, head)
 				else
@@ -340,7 +330,7 @@ module Protocol
 				read_remainder_body
 			end
 			
-			def read_upgrade_body
+			def read_upgrade_body(protocol)
 				read_remainder_body
 			end
 			
@@ -429,9 +419,8 @@ module Protocol
 					end
 				end
 				
-				if upgrade = upgrade?(headers)
-					@upgrade = upgrade
-					return read_upgrade_body
+				if protocol = upgrade?(headers)
+					return read_upgrade_body(protocol)
 				end
 				
 				if remainder

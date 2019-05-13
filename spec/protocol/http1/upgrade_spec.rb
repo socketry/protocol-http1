@@ -25,7 +25,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 	include_context Protocol::HTTP1::Connection
 	
 	describe '#upgrade' do
-		let(:request_upgrade) {"proxy"}
+		let(:protocol) {'binary'}
 		let(:request_version) {Protocol::HTTP1::Connection::HTTP10}
 		
 		let(:body) do
@@ -38,15 +38,13 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 		
 		it "should upgrade connection" do
-			client.upgrade!(request_upgrade)
-			
 			client.write_request("testing.com", "GET", "/", request_version, [])
-			client.write_upgrade_body(body)
+			client.write_upgrade_body(protocol, body)
 			
 			authority, method, path, version, headers, body = server.read_request
 			
 			expect(version).to be == request_version
-			expect(server.upgrade).to be == request_upgrade
+			expect(headers['upgrade']).to be == [protocol]
 			expect(body).to be == "Hello World"
 		end
 	end
