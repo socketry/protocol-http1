@@ -28,18 +28,12 @@ RSpec.describe Protocol::HTTP1::Connection do
 		let(:protocol) {'binary'}
 		let(:request_version) {Protocol::HTTP1::Connection::HTTP10}
 		
-		let(:body) do
-			lambda do |wrapper|
-				wrapper.write "Hello World"
-				
-				# This is called here to ensure the spec passes. Otherwise, it's up to the server to do this once the upgrade body is finished.
-				wrapper.close
-			end
-		end
-		
 		it "should upgrade connection" do
 			client.write_request("testing.com", "GET", "/", request_version, [])
-			client.write_upgrade_body(protocol, body)
+			stream = client.write_upgrade_body(protocol)
+			
+			stream.write "Hello World"
+			stream.close_write
 			
 			authority, method, path, version, headers, body = server.read_request
 			

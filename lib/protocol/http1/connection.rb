@@ -114,13 +114,11 @@ module Protocol
 				write_headers(headers)
 			end
 			
-			def write_response(version, status, headers, body = nil, head = false)
+			def write_response(version, status, headers)
 				# Safari WebSockets break if no reason is given.
 				@stream.write("#{version} #{status} .\r\n")
 				
 				write_headers(headers)
-				
-				write_body(version, body, head)
 			end
 			
 			def write_headers(headers)
@@ -200,7 +198,8 @@ module Protocol
 				return chunk
 			end
 			
-			def write_upgrade_body(protocol, body = nil)
+			# @param protocol [String] the protocol to upgrade to.
+			def write_upgrade_body(protocol)
 				write_upgrade_header(protocol)
 				
 				# Any time we are potentially closing the stream, we should ensure no further requests are processed:
@@ -208,8 +207,6 @@ module Protocol
 				
 				@stream.write("\r\n")
 				@stream.flush
-				
-				body.call(@stream) if body
 				
 				return @stream
 			end
@@ -277,6 +274,7 @@ module Protocol
 			def write_body_and_close(body, head)
 				# We can't be persistent because we don't know the data length:
 				@persistent = false
+				
 				@stream.write("\r\n")
 				@stream.flush
 				
@@ -293,22 +291,21 @@ module Protocol
 			end
 			
 			def write_body(version, body, head = false)
-				write_connection_header(version)
-				
 				if body.nil? or body.empty?
+					write_connection_header(version)
 					write_empty_body(body)
-				elsif body.respond_to?(:call)
-					write_upgrade_body(body)
 				elsif length = body.length
+					write_connection_header(version)
 					write_fixed_length_body(body, length, head)
 				elsif @persistent and version == HTTP11
+					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
 					write_chunked_body(body, head)
 				else
+					@persistent = false
+					write_connection_header(version)
 					write_body_and_close(body, head)
 				end
-				
-				@stream.flush
 			end
 			
 			def read_chunked_body
@@ -423,6 +420,7 @@ module Protocol
 					return read_upgrade_body(protocol)
 				end
 				
+				# http://tools.ietf.org/html/rfc2068#section-19.7.1.1
 				if remainder
 					# 7.  Otherwise, this is a response message without a declared message
 					# body length, so the message body length is determined by the

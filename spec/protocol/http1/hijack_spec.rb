@@ -43,7 +43,8 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(body).to receive(:each).and_return(nil)
 			
 			expect(server).to receive(:write_body_and_close).and_call_original
-			server.write_response(response_version, 101, response_headers, body)
+			server.write_response(response_version, 101, response_headers)
+			server.write_body(response_version, body)
 			
 			version, status, reason, headers, body = client.read_response("GET")
 			
