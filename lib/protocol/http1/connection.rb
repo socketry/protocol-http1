@@ -114,9 +114,9 @@ module Protocol
 				write_headers(headers)
 			end
 			
-			def write_response(version, status, headers)
+			def write_response(version, status, headers, reason = "With Honour.")
 				# Safari WebSockets break if no reason is given.
-				@stream.write("#{version} #{status} .\r\n")
+				@stream.write("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
 			end
@@ -199,14 +199,19 @@ module Protocol
 			end
 			
 			# @param protocol [String] the protocol to upgrade to.
-			def write_upgrade_body(protocol)
-				write_upgrade_header(protocol)
-				
-				# Any time we are potentially closing the stream, we should ensure no further requests are processed:
+			def write_upgrade_body(protocol, body = nil)
+				# Once we upgrade the connection, it can no longer handle other requests:
 				@persistent = false
 				
+				write_upgrade_header(protocol)
+				
 				@stream.write("\r\n")
-				@stream.flush
+				@stream.flush # Don't remove me!
+				
+				body&.each do |chunk|
+					@stream.write(chunk)
+					@stream.flush
+				end
 				
 				return @stream
 			end
@@ -345,7 +350,7 @@ module Protocol
 				# code is always terminated by the first empty line after the
 				# header fields, regardless of the header fields present in the
 				# message, and thus cannot contain a message body.
-				if method == "HEAD" or (status >= 100 and status < 200) or status == 204 or status == 304
+				if method == "HEAD" or (status != 101 and status >= 100 and status < 200) or status == 204 or status == 304
 					return nil
 				end
 				
@@ -414,10 +419,6 @@ module Protocol
 					else
 						raise BadRequest, "Invalid content length: #{content_length}"
 					end
-				end
-				
-				if protocol = upgrade?(headers)
-					return read_upgrade_body(protocol)
 				end
 				
 				# http://tools.ietf.org/html/rfc2068#section-19.7.1.1
