@@ -111,6 +111,75 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 	end
 	
+	describe '#write_chunked_body' do
+		it "can generate and read chunked response" do
+			chunks = ["Hello", "World"]
+			
+			server.write_chunked_body(chunks, false)
+			server.close
+			
+			headers = client.read_headers
+			expect(headers).to be == [['transfer-encoding', 'chunked']]
+			
+			body = client.read_body(headers, false)
+			expect(body).to be == chunks.join
+		end
+	end
+	
+	describe '#write_fixed_length_body' do
+		it "can generate and read chunked response" do
+			chunks = ["Hello", "World"]
+			
+			server.write_fixed_length_body(chunks, 10, false)
+			server.close
+			
+			headers = client.read_headers
+			expect(headers).to be == [['content-length', '10']]
+			
+			body = client.read_body(headers, false)
+			expect(body).to be == chunks.join
+		end
+	end
+	
+	describe '#write_body' do
+		let(:body) {double}
+		
+		it "can write empty body" do
+			expect(body).to receive(:empty?).and_return(true)
+			
+			expect(server).to receive(:write_empty_body)
+			server.write_body("HTTP/1.0", body)
+		end
+		
+		it "can write fixed length body" do
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(1024)
+			
+			expect(server).to receive(:write_fixed_length_body)
+			server.write_body("HTTP/1.0", body)
+		end
+		
+		it "can write chunked body" do
+			expect(server.persistent).to be true
+			
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(nil)
+			
+			expect(server).to receive(:write_chunked_body)
+			server.write_body("HTTP/1.1", body)
+		end
+		
+		it "can write closed body" do
+			expect(server.persistent).to be true
+			
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(nil)
+			
+			expect(server).to receive(:write_body_and_close)
+			server.write_body("HTTP/1.0", body)
+		end
+	end
+	
 	context 'bad requests' do
 		it "should fail with negative content length" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: -1\r\n\r\nHello World"
