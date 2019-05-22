@@ -1,4 +1,4 @@
-# Copyright, 2019, by Samuel G. D. Williams. <http://www.codeotaku.com>
+# Copyright, 2018, by Samuel G. D. Williams. <http://www.codeotaku.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,17 +18,47 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'async/rspec'
-require 'covered/rspec'
+require 'protocol/http/body/readable'
 
-RSpec.configure do |config|
-	# Enable flags like --only-failures and --next-failure
-	config.example_status_persistence_file_path = ".rspec_status"
-
-	# Disable RSpec exposing methods globally on `Module` and `main`
-	config.disable_monkey_patching!
-
-	config.expect_with :rspec do |c|
-		c.syntax = :expect
+module Protocol
+	module HTTP1
+		module Body
+			class Remainder < HTTP::Body::Readable
+				def initialize(stream)
+					@stream = stream
+				end
+				
+				def empty?
+					@stream.closed?
+				end
+				
+				def close(error = nil)
+					# We can't really do anything in this case except close the connection.
+					@stream.close
+				
+					super
+				end
+				
+				def read
+					@stream.read_partial
+				end
+				
+				def call(stream)
+					self.each do |chunk|
+						stream.write(chunk)
+					end
+					
+					stream.flush
+				end
+				
+				def join
+					read
+				end
+				
+				def inspect
+					"\#<#{self.class} #{@stream.closed? ? 'closed' : 'open'}>"
+				end
+			end
+		end
 	end
 end

@@ -64,7 +64,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(target).to be == '/'
 			expect(version).to be == 'HTTP/1.1'
 			expect(headers).to be == {}
-			expect(body).to be == "Hello World"
+			expect(body.join).to be == "Hello World"
 		end
 		
 		it "reads request with chunked body" do
@@ -78,7 +78,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(target).to be == '/'
 			expect(version).to be == 'HTTP/1.1'
 			expect(headers).to be == {}
-			expect(body).to be == "Hello World"
+			expect(body.join).to be == "Hello World"
 			expect(server).to be_persistent(version, headers)
 		end
 		
@@ -122,7 +122,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(headers).to be == [['transfer-encoding', 'chunked']]
 			
 			body = client.read_body(headers, false)
-			expect(body).to be == chunks.join
+			expect(body.join).to be == chunks.join
 		end
 	end
 	
@@ -137,7 +137,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(headers).to be == [['content-length', '10']]
 			
 			body = client.read_body(headers, false)
-			expect(body).to be == chunks.join
+			expect(body.join).to be == chunks.join
 		end
 	end
 	

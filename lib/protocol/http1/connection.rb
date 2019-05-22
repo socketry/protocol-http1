@@ -22,6 +22,10 @@ require 'protocol/http/headers'
 
 require_relative 'error'
 
+require_relative 'body/chunked'
+require_relative 'body/fixed'
+require_relative 'body/remainder'
+
 module Protocol
 	module HTTP1
 		CONTENT_LENGTH = 'content-length'.freeze
@@ -180,24 +184,6 @@ module Protocol
 				return HTTP::Headers.new(fields)
 			end
 			
-			def read_chunk
-				length = self.read_line.to_i(16)
-				
-				if length == 0
-					self.read_line
-					
-					return nil
-				end
-				
-				# Read the data:
-				chunk = @stream.read(length)
-				
-				# Consume the trailing CRLF:
-				@stream.read(2)
-				
-				return chunk
-			end
-			
 			# @param protocol [String] the protocol to upgrade to.
 			def write_upgrade_body(protocol, body = nil)
 				# Once we upgrade the connection, it can no longer handle other requests:
@@ -220,9 +206,7 @@ module Protocol
 				@stream.write("content-length: 0\r\n\r\n")
 				@stream.flush
 				
-				if body
-					body.close if body.respond_to?(:close)
-				end
+				body&.close
 			end
 			
 			def write_fixed_length_body(body, length, head)
@@ -230,7 +214,7 @@ module Protocol
 				@stream.flush
 				
 				if head
-					body.close if body.respond_to?(:close)
+					body.close
 					
 					return
 				end
@@ -258,7 +242,7 @@ module Protocol
 				@stream.flush
 				
 				if head
-					body.close if body.respond_to?(:close)
+					body.close
 					
 					return
 				end
@@ -284,7 +268,7 @@ module Protocol
 				@stream.flush
 				
 				if head
-					body.close if body.respond_to?(:close)
+					body.close
 				else
 					body.each do |chunk|
 						@stream.write(chunk)
@@ -314,18 +298,15 @@ module Protocol
 			end
 			
 			def read_chunked_body
-				buffer = String.new.b
-				
-				while chunk = read_chunk
-					buffer << chunk
-					chunk.clear
-				end
-				
-				return buffer
+				Body::Chunked.new(self)
 			end
 			
 			def read_fixed_body(length)
-				@stream.read(length)
+				Body::Fixed.new(@stream, length)
+			end
+			
+			def read_remainder_body
+				Body::Remainder.new(@stream)
 			end
 			
 			def read_tunnel_body
@@ -334,10 +315,6 @@ module Protocol
 			
 			def read_upgrade_body(protocol)
 				read_remainder_body
-			end
-			
-			def read_remainder_body
-				@stream.read
 			end
 			
 			HEAD = "HEAD".freeze
