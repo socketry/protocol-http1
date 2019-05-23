@@ -36,8 +36,6 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 		
 		it "should use non-chunked output" do
-			server_wrapper = server.hijack!
-			
 			expect(body).to receive(:empty?).and_return(false)
 			expect(body).to receive(:length).and_return(nil)
 			expect(body).to receive(:each).and_return(nil)
@@ -46,6 +44,8 @@ RSpec.describe Protocol::HTTP1::Connection do
 			server.write_response(response_version, 101, response_headers)
 			server.write_body(response_version, body)
 			
+			server_stream = server.hijack!
+			
 			version, status, reason, headers, body = client.read_response("GET")
 			
 			expect(version).to be == response_version
@@ -53,12 +53,12 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(headers).to be == response_headers
 			expect(body).to be_nil # due to 101 status
 			
-			client_wrapper = client.hijack!
+			client_stream = client.hijack!
 			
-			client_wrapper.write(text)
-			client_wrapper.close
+			client_stream.write(text)
+			client_stream.close
 			
-			expect(server_wrapper.read).to be == text
+			expect(server_stream.read).to be == text
 		end
 	end
 end

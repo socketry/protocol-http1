@@ -100,15 +100,17 @@ module Protocol
 			# @return [IO] the underlying non-blocking IO.
 			def hijack!
 				@persistent = false
+				stream = @stream
 				
 				@stream.flush
+				@stream = nil
 				
-				return @stream
+				return stream
 			end
 			
 			# Close the connection and underlying stream.
 			def close
-				@stream.close
+				@stream&.close
 			end
 			
 			def write_request(authority, method, path, version, headers)
