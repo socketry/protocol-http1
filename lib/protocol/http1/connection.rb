@@ -20,6 +20,7 @@
 
 require 'protocol/http/headers'
 
+require_relative 'reason'
 require_relative 'error'
 
 require_relative 'body/chunked'
@@ -120,7 +121,7 @@ module Protocol
 				write_headers(headers)
 			end
 			
-			def write_response(version, status, headers, reason = "With Honour.")
+			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
 				# Safari WebSockets break if no reason is given.
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
