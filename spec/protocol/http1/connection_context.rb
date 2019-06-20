@@ -23,8 +23,24 @@ require 'protocol/http1/connection'
 require 'socket'
 
 RSpec.shared_context Protocol::HTTP1::Connection do
-	let(:sockets) {Socket.pair(Socket::PF_UNIX, Socket::SOCK_STREAM)}
-	
+	let(:sockets) {
+		r, w = Socket.pair(Socket::PF_UNIX, Socket::SOCK_STREAM)
+		# https://github.com/socketry/protocol-http1/pull/1#discussion_r295598266
+		# https://docs.ruby-lang.org/en/2.3.0/IO.html#method-i-gets
+		# https://docs.ruby-lang.org/en/2.5.0/IO.html#method-i-gets
+		if !($stdin.gets(nil, 0, chomp: true) rescue nil)
+			def r.gets(*args, chomp: false)
+				chomp ? super(*args).chomp : super(*args)
+			end
+
+			def w.gets(*args, chomp: false)
+				chomp ? super(*args).chomp : super(*args)
+			end
+		end
+
+		[r, w]
+	}
+
 	let(:client) {Protocol::HTTP1::Connection.new(sockets.first)}
 	let(:server) {Protocol::HTTP1::Connection.new(sockets.last)}
 end
