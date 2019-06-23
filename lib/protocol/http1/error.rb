@@ -25,9 +25,6 @@ module Protocol
 		class Error < HTTP::Error
 		end
 		
-		class InvalidMethod < Error
-		end
-		
 		class InvalidRequest < Error
 		end
 		

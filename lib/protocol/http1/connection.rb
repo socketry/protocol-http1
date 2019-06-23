@@ -43,6 +43,10 @@ module Protocol
 		HOST = 'host'.freeze
 		UPGRADE = 'upgrade'.freeze
 		
+		# HTTP/1.x request line parser:
+		TOKEN = /[!#$%&'*+-\.^_`|~0-9a-zA-Z]+/.freeze
+		REQUEST_LINE = /^(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)$/.freeze
+		
 		class Connection
 			CRLF = "\r\n".freeze
 			HTTP10 = "HTTP/1.0".freeze
@@ -147,13 +151,9 @@ module Protocol
 			def read_request
 				return unless line = read_line?
 				
-				method, path, version = line.split(/\s+/, 3)
-				
-				unless HTTP::Methods.const_defined?(method)
-					raise InvalidMethod, method
-				end
-				
-				unless method and path and version
+				if match = line.match(REQUEST_LINE)
+					_, method, path, version = *match
+				else
 					raise InvalidRequest, line.inspect
 				end
 				
