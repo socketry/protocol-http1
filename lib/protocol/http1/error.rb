@@ -25,6 +25,12 @@ module Protocol
 		class Error < HTTP::Error
 		end
 		
+		class InvalidMethod < Error
+		end
+		
+		class InvalidRequest < Error
+		end
+		
 		# The request was parsed correctly, but was invalid for some other reason.
 		class BadRequest < Error
 		end

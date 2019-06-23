@@ -27,6 +27,8 @@ require_relative 'body/chunked'
 require_relative 'body/fixed'
 require_relative 'body/remainder'
 
+require 'protocol/http/methods'
+
 module Protocol
 	module HTTP1
 		CONTENT_LENGTH = 'content-length'.freeze
@@ -146,6 +148,15 @@ module Protocol
 				return unless line = read_line?
 				
 				method, path, version = line.split(/\s+/, 3)
+				
+				unless HTTP::Methods.const_defined?(method)
+					raise InvalidMethod, method
+				end
+				
+				unless method and path and version
+					raise InvalidRequest, line.inspect
+				end
+				
 				headers = read_headers
 				
 				@persistent = persistent?(version, headers)

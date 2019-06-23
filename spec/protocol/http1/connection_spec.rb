@@ -82,6 +82,33 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(server).to be_persistent(version, headers)
 		end
 		
+		it "fails with broken request" do
+			client.stream.write "Accept: */*\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_error(NameError, /wrong constant name Accept:/)
+		end
+		
+		it "fails with missing version" do
+			client.stream.write "GET foo\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_error(Protocol::HTTP1::InvalidRequest)
+		end
+		
+		it "fails with invalid method" do
+			client.stream.write "GETT /foo HTTP/1.0\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_error(Protocol::HTTP1::InvalidMethod)
+		end
+		
 		it "should be persistent by default" do
 			expect(client).to be_persistent('HTTP/1.1', {})
 			expect(server).to be_persistent('HTTP/1.1', {})
