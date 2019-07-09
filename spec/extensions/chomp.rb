@@ -18,21 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'async/rspec'
-require 'covered/rspec'
-
-if RUBY_VERSION < "2.4.0"
-	require_relative "extensions/chomp"
-end
-
-RSpec.configure do |config|
-	# Enable flags like --only-failures and --next-failure
-	config.example_status_persistence_file_path = ".rspec_status"
-
-	# Disable RSpec exposing methods globally on `Module` and `main`
-	config.disable_monkey_patching!
-
-	config.expect_with :rspec do |c|
-		c.syntax = :expect
+module Chomp
+	# https://github.com/socketry/protocol-http1/pull/1
+	# https://docs.ruby-lang.org/en/2.3.0/IO.html#method-i-gets
+	# https://docs.ruby-lang.org/en/2.4.0/IO.html#method-i-gets
+	def gets(*args, chomp: false)
+		chomp ? super(*args).chomp : super(*args)
 	end
 end
+
+IO.prepend(Chomp)
