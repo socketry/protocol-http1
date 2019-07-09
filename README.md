@@ -2,7 +2,7 @@
 
 Provides a low-level implementation of the HTTP/1 protocol.
 
-[![Build Status](https://secure.travis-ci.com/socketry/protocol-http1.svg)](http://travis-ci.com/socketry/protocol-http1)
+[![Build Status](https://travis-ci.com/socketry/protocol-http1.svg?branch=master)](https://travis-ci.com/socketry/protocol-http1)
 
 ## Installation
 
