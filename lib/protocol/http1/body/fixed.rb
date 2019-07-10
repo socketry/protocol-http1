@@ -47,7 +47,7 @@ module Protocol
 				
 				def read
 					if @remaining > 0
-						if chunk = @stream.read_partial(@remaining)
+						if chunk = @stream.readpartial(@remaining)
 							@remaining -= chunk.bytesize
 							
 							return chunk

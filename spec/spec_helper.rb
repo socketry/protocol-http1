@@ -18,7 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'async/rspec'
+require 'rspec/memory'
+require 'rspec/files'
+
 require 'covered/rspec'
 
 if RUBY_VERSION < "2.4.0"

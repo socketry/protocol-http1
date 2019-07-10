@@ -25,8 +25,8 @@ module Protocol
 		module Body
 			class Chunked < HTTP::Body::Readable
 				# TODO maybe this should take a stream rather than a connection?
-				def initialize(connection)
-					@connection = connection
+				def initialize(stream)
+					@stream = stream
 					@finished = false
 					
 					@length = 0
@@ -40,7 +40,7 @@ module Protocol
 				def close(error = nil)
 					# We only close the connection if we haven't completed reading the entire body:
 					unless @finished
-						@connection.close
+						@stream.close
 						@finished = true
 					end
 					
@@ -50,17 +50,17 @@ module Protocol
 				def read
 					return nil if @finished
 					
-					length = @connection.read_line.to_i(16)
+					length = read_line.to_i(16)
 					
 					if length == 0
 						@finished = true
-						@connection.read_line
+						read_line
 						
 						return nil
 					end
 					
-					chunk = @connection.stream.read(length)
-					@connection.read_line # Consume the trailing CRLF
+					chunk = @stream.read(length)
+					read_line # Consume the trailing CRLF
 					
 					@length += length
 					@count += 1
@@ -70,6 +70,12 @@ module Protocol
 				
 				def inspect
 					"\#<#{self.class} #{@length} bytes read in #{@count} chunks>"
+				end
+				
+				private
+				
+				def read_line
+					@stream.gets(chomp: true)
 				end
 			end
 		end

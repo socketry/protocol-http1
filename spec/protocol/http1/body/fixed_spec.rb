@@ -19,15 +19,13 @@
 # THE SOFTWARE.
 
 require 'protocol/http1/body/fixed'
-require 'async/rspec/buffer'
 
 RSpec.describe Protocol::HTTP1::Body::Fixed do
-	include_context Async::RSpec::Memory
-	include_context Async::RSpec::Buffer
+	include_context RSpec::Memory
+	include_context RSpec::Files::Buffer
 	
 	let(:content) {"Hello World"}
-	let(:stream) {Async::IO::Stream.new(buffer)}
-	subject! {described_class.new(stream, content.bytesize)}
+	subject! {described_class.new(buffer, content.bytesize)}
 	
 	before do
 		buffer.write content
@@ -43,13 +41,13 @@ RSpec.describe Protocol::HTTP1::Body::Fixed do
 	describe "#stop" do
 		it "closes the stream" do
 			subject.close(EOFError)
-			expect(stream).to be_closed
+			expect(buffer).to be_closed
 		end
 		
 		it "doesn't close the stream when EOF was reached" do
 			subject.read
 			subject.close(EOFError)
-			expect(stream).not_to be_closed
+			expect(buffer).not_to be_closed
 		end
 	end
 	
@@ -65,7 +63,7 @@ RSpec.describe Protocol::HTTP1::Body::Fixed do
 		end
 		
 		context "when provided length is smaller than stream size" do
-			subject {described_class.new(stream, 5)}
+			subject {described_class.new(buffer, 5)}
 			
 			it "retrieves content up to provided length" do
 				expect(subject.read).to be == "Hello"

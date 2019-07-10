@@ -312,7 +312,7 @@ module Protocol
 			end
 			
 			def read_chunked_body
-				Body::Chunked.new(self)
+				Body::Chunked.new(@stream)
 			end
 			
 			def read_fixed_body(length)

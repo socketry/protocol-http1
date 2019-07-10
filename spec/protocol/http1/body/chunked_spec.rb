@@ -22,19 +22,16 @@ require_relative '../connection_context'
 
 require 'protocol/http1/body/chunked'
 
-require 'async/io/stream'
-require 'async/rspec/buffer'
-
 RSpec.describe Protocol::HTTP1::Body::Chunked do
-	include_context Async::RSpec::Memory
-	include_context Protocol::HTTP1::Connection
+	include_context RSpec::Memory
+	include_context RSpec::Files::Buffer
 	
 	let(:content) {"Hello World"}
-	subject! {described_class.new(client)}
+	subject! {described_class.new(buffer)}
 	
 	before do
-		sockets.last.write "#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n\r\n"
-		sockets.last.close
+		buffer.write "#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n\r\n"
+		buffer.seek(0)
 	end
 	
 	describe "#empty?" do
@@ -46,7 +43,7 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 	describe "#stop" do
 		it "closes the stream" do
 			subject.close(EOFError)
-			expect(client.stream).to be_closed
+			expect(buffer).to be_closed
 		end
 		
 		it "marks body as finished" do
@@ -68,8 +65,8 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 			expect(subject).to be_empty
 		end
 		
-		xcontext "with large stream" do
-			let!(:content) {"a" * 1024}
+		context "with large stream" do
+			let!(:content) {"a" * 1024 * 10}
 			
 			it "allocates expected amount of memory" do
 				expect do
