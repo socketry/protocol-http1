@@ -22,8 +22,8 @@ module Chomp
 	# https://github.com/socketry/protocol-http1/pull/1
 	# https://docs.ruby-lang.org/en/2.3.0/IO.html#method-i-gets
 	# https://docs.ruby-lang.org/en/2.4.0/IO.html#method-i-gets
-	def gets(*args, chomp: false)
-		chomp ? super(*args).chomp : super(*args)
+	def gets(sep = $/, chomp: false)
+		chomp ? super(sep).chomp : super(sep)
 	end
 end
 
