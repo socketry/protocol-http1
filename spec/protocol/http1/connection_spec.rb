@@ -79,7 +79,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(version).to be == 'HTTP/1.1'
 			expect(headers).to be == {}
 			expect(body.join).to be == "Hello World"
-			expect(server).to be_persistent(version, headers)
+			expect(server).to be_persistent(version, method, headers)
 		end
 		
 		it "fails with broken request" do
@@ -101,8 +101,8 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 		
 		it "should be persistent by default" do
-			expect(client).to be_persistent('HTTP/1.1', {})
-			expect(server).to be_persistent('HTTP/1.1', {})
+			expect(client).to be_persistent('HTTP/1.1', "GET", {})
+			expect(server).to be_persistent('HTTP/1.1', "GET", {})
 		end
 	end
 	

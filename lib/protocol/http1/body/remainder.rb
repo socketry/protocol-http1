@@ -35,12 +35,12 @@ module Protocol
 				def close(error = nil)
 					# We can't really do anything in this case except close the connection.
 					@stream.close
-				
+					
 					super
 				end
 				
 				def read
-					@stream.read_partial
+					@stream.readpartial
 				end
 				
 				def call(stream)
@@ -52,7 +52,7 @@ module Protocol
 				end
 				
 				def join
-					read
+					@stream.read
 				end
 				
 				def inspect

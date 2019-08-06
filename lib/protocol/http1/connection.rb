@@ -74,7 +74,11 @@ module Protocol
 				end
 			end
 			
-			def persistent?(version, headers)
+			def persistent?(version, method, headers)
+				if method == HTTP::Methods::CONNECT
+					return false
+				end
+				
 				if version == HTTP10
 					if connection = headers[CONNECTION]
 						return connection.include?(KEEP_ALIVE)
@@ -159,9 +163,9 @@ module Protocol
 				
 				headers = read_headers
 				
-				@persistent = persistent?(version, headers)
+				@persistent = persistent?(version, method, headers)
 				
-				body = read_request_body(headers)
+				body = read_request_body(method, headers)
 				
 				@count += 1
 				
@@ -175,7 +179,7 @@ module Protocol
 				
 				headers = read_headers
 				
-				@persistent = persistent?(version, headers)
+				@persistent = persistent?(version, method, headers)
 				
 				body = read_response_body(method, status, headers)
 				
@@ -208,9 +212,33 @@ module Protocol
 				@stream.write("\r\n")
 				@stream.flush # Don't remove me!
 				
-				body&.each do |chunk|
-					@stream.write(chunk)
-					@stream.flush
+				if body
+					body.each do |chunk|
+						@stream.write(chunk)
+						@stream.flush
+					end
+					
+					@stream.close_write
+				end
+				
+				return @stream
+			end
+			
+			def write_tunnel_body(version, body = nil)
+				@persistent = false
+				
+				write_connection_header(version)
+				
+				@stream.write("\r\n")
+				@stream.flush # Don't remove me!
+				
+				if body
+					body.each do |chunk|
+						@stream.write(chunk)
+						@stream.flush
+					end
+					
+					@stream.close_write
 				end
 				
 				return @stream
@@ -341,7 +369,7 @@ module Protocol
 				# code is always terminated by the first empty line after the
 				# header fields, regardless of the header fields present in the
 				# message, and thus cannot contain a message body.
-				if method == "HEAD" or (status >= 100 and status < 200) or status == 204 or status == 304
+				if method == HTTP::Methods::HEAD or (status >= 100 and status < 200) or status == 204 or status == 304
 					return nil
 				end
 				
@@ -350,14 +378,23 @@ module Protocol
 				# line that concludes the header fields.  A client MUST ignore any
 				# Content-Length or Transfer-Encoding header fields received in
 				# such a message.
-				if method == "CONNECT" and status == 200
+				if method == HTTP::Methods::CONNECT and status == 200
 					return read_tunnel_body
 				end
 				
 				return read_body(headers, true)
 			end
 			
-			def read_request_body(headers)
+			def read_request_body(method, headers)
+				# 2.  Any 2xx (Successful) response to a CONNECT request implies that
+				# the connection will become a tunnel immediately after the empty
+				# line that concludes the header fields.  A client MUST ignore any
+				# Content-Length or Transfer-Encoding header fields received in
+				# such a message.
+				if method == HTTP::Methods::CONNECT
+					return read_tunnel_body
+				end
+				
 				# 6.  If this is a request message and none of the above are true, then
 				# the message body length is zero (no message body is present).
 				return read_body(headers)
