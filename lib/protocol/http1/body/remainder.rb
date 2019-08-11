@@ -24,12 +24,15 @@ module Protocol
 	module HTTP1
 		module Body
 			class Remainder < HTTP::Body::Readable
+				BLOCK_SIZE = 1024 * 64
+				
+				# block_size may be removed in the future. It is better managed by stream.
 				def initialize(stream)
 					@stream = stream
 				end
 				
 				def empty?
-					@stream.closed?
+					@stream.eof? or @stream.closed?
 				end
 				
 				def close(error = nil)
@@ -39,8 +42,11 @@ module Protocol
 					super
 				end
 				
+				# TODO this is a bit less efficient in order to maintain compatibility with `IO`.
 				def read
-					@stream.readpartial
+					@stream.readpartial(BLOCK_SIZE)
+				rescue EOFError
+					return nil
 				end
 				
 				def call(stream)
