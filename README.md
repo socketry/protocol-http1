@@ -30,7 +30,7 @@ require 'async/io/stream'
 require 'async/http/endpoint'
 require 'protocol/http1/connection'
 
-Async.run do
+Async do
 	endpoint = Async::HTTP::Endpoint.parse("https://www.google.com/search?q=kittens", alpn_protocols: ["http/1.1"])
 	
 	peer = endpoint.connect
