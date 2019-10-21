@@ -99,10 +99,35 @@ RSpec.describe Protocol::HTTP1::Connection do
 				server.read_request
 			end.to raise_error(Protocol::HTTP1::InvalidRequest)
 		end
-		
-		it "should be persistent by default" do
-			expect(client).to be_persistent('HTTP/1.1', "GET", {})
-			expect(server).to be_persistent('HTTP/1.1', "GET", {})
+	end
+
+	describe '#persistent?' do
+		describe "HTTP 1.0" do
+			it "should not be persistent by default" do
+				expect(server).not_to be_persistent("HTTP/1.0", "GET", {})
+			end
+
+			it "should be persistent if connection: keep-alive is set" do
+				expect(server).to be_persistent("HTTP/1.0", "GET", { "connection" => "keep-alive" })
+			end
+
+			it "should allow case-insensitive 'connection' value" do
+				expect(server).to be_persistent("HTTP/1.0", "GET", { "connection" => "Keep-Alive" })
+			end
+		end
+
+		describe "HTTP 1.1" do
+			it "should be persistent by default" do
+				expect(server).to be_persistent("HTTP/1.1", "GET", {})
+			end
+
+			it "should not be persistent if connection: close is set" do
+				expect(server).not_to be_persistent("HTTP/1.1", "GET", { "connection" => "close" })
+			end
+
+			it "should allow case-insensitive 'connection' value" do
+				expect(server).not_to be_persistent("HTTP/1.1", "GET", { "connection" => "Close" })
+			end
 		end
 	end
 	
