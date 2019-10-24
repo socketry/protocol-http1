@@ -108,11 +108,19 @@ RSpec.describe Protocol::HTTP1::Connection do
 			end
 
 			it "should be persistent if connection: keep-alive is set" do
-				expect(server).to be_persistent("HTTP/1.0", "GET", { "connection" => "keep-alive" })
+				headers = Protocol::HTTP::Headers[
+					"connection" => "keep-alive"
+				]
+				
+				expect(server).to be_persistent("HTTP/1.0", "GET", headers)
 			end
 
 			it "should allow case-insensitive 'connection' value" do
-				expect(server).to be_persistent("HTTP/1.0", "GET", { "connection" => "Keep-Alive" })
+				headers = Protocol::HTTP::Headers[
+					"connection" => "Keep-Alive"
+				]
+				
+				expect(server).to be_persistent("HTTP/1.0", "GET", headers)
 			end
 		end
 
@@ -122,11 +130,19 @@ RSpec.describe Protocol::HTTP1::Connection do
 			end
 
 			it "should not be persistent if connection: close is set" do
-				expect(server).not_to be_persistent("HTTP/1.1", "GET", { "connection" => "close" })
+				headers = Protocol::HTTP::Headers[
+					"connection" => "close"
+				]
+				
+				expect(server).not_to be_persistent("HTTP/1.1", "GET", headers)
 			end
 
 			it "should allow case-insensitive 'connection' value" do
-				expect(server).not_to be_persistent("HTTP/1.1", "GET", { "connection" => "Close" })
+				headers = Protocol::HTTP::Headers[
+					"connection" => "Close"
+				]
+				
+				expect(server).not_to be_persistent("HTTP/1.1", "GET", headers)
 			end
 		end
 	end

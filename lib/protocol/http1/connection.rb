@@ -80,14 +80,14 @@ module Protocol
 				end
 				
 				if version == HTTP10
-					if connection = headers[CONNECTION]&.downcase
-						return connection.include?(KEEP_ALIVE)
+					if connection = headers[CONNECTION]
+						return connection.keep_alive?
 					else
 						return false
 					end
 				else
-					if connection = headers[CONNECTION]&.downcase
-						return !connection.include?(CLOSE)
+					if connection = headers[CONNECTION]
+						return !connection.close?
 					else
 						return true
 					end
