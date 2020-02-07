@@ -140,6 +140,8 @@ module Protocol
 			
 			def write_headers(headers)
 				headers.each do |name, value|
+					raise BadResponse, "invalid value for header #{name}: #{value.inspect}" if value.match?(/\r|\n/)
+					
 					@stream.write("#{name}: #{value}\r\n")
 				end
 			end

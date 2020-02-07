@@ -249,4 +249,22 @@ RSpec.describe Protocol::HTTP1::Connection do
 			end.to raise_error(Protocol::HTTP1::BadRequest)
 		end
 	end
+	
+	context 'bad responses' do
+		it 'should fail if headers contain \r characters' do
+			expect do
+				server.write_headers(
+					[["id", "5\rSet-Cookie: foo-bar"]]
+				)
+			end.to raise_error(Protocol::HTTP1::BadResponse)
+		end
+		
+		it 'should fail if headers contain \n characters' do
+			expect do
+				server.write_headers(
+					[["id", "5\nSet-Cookie: foo-bar"]]
+				)
+			end.to raise_error(Protocol::HTTP1::BadResponse)
+		end
+	end
 end

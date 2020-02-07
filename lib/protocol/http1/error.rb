@@ -31,5 +31,8 @@ module Protocol
 		# The request was parsed correctly, but was invalid for some other reason.
 		class BadRequest < Error
 		end
+		
+		class BadResponse < Error
+		end
 	end
 end
