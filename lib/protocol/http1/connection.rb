@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Copyright, 2018, by Samuel G. D. Williams. <http://www.codeotaku.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,17 +33,17 @@ require 'protocol/http/methods'
 
 module Protocol
 	module HTTP1
-		CONTENT_LENGTH = 'content-length'.freeze
+		CONTENT_LENGTH = 'content-length'
 		
-		TRANSFER_ENCODING = 'transfer-encoding'.freeze
-		CHUNKED = 'chunked'.freeze
+		TRANSFER_ENCODING = 'transfer-encoding'
+		CHUNKED = 'chunked'
 		
-		CONNECTION = 'connection'.freeze
-		CLOSE = 'close'.freeze
-		KEEP_ALIVE = 'keep-alive'.freeze
+		CONNECTION = 'connection'
+		CLOSE = 'close'
+		KEEP_ALIVE = 'keep-alive'
 		
-		HOST = 'host'.freeze
-		UPGRADE = 'upgrade'.freeze
+		HOST = 'host'
+		UPGRADE = 'upgrade'
 		
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+-\.^_`|~0-9a-zA-Z]+/.freeze
@@ -52,13 +54,13 @@ module Protocol
 		FIELD_VALUE = /[^\000-\037]*/.freeze
 		HEADER = /\A(#{FIELD_NAME}):\s*(#{FIELD_VALUE})\s*\z/.freeze
 		
-		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/
-		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/
+		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
+		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
 		
 		class Connection
-			CRLF = "\r\n".freeze
-			HTTP10 = "HTTP/1.0".freeze
-			HTTP11 = "HTTP/1.1".freeze
+			CRLF = "\r\n"
+			HTTP10 = "HTTP/1.0"
+			HTTP11 = "HTTP/1.1"
 			
 			def initialize(stream, persistent = true)
 				@stream = stream
@@ -384,8 +386,8 @@ module Protocol
 				read_remainder_body
 			end
 			
-			HEAD = "HEAD".freeze
-			CONNECT = "CONNECT".freeze
+			HEAD = "HEAD"
+			CONNECT = "CONNECT"
 			
 			def read_response_body(method, status, headers)
 				# RFC 7230 3.3.3
