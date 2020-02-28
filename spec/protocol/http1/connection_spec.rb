@@ -170,6 +170,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 	end
 	
+	
 	describe '#write_chunked_body' do
 		it "can generate and read chunked response" do
 			chunks = ["Hello", "World"]
@@ -248,6 +249,15 @@ RSpec.describe Protocol::HTTP1::Connection do
 				server.read_request
 			end.to raise_error(Protocol::HTTP1::BadRequest)
 		end
+		
+		it "should fail with invalid headers" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: \000localhost\r\n\r\nHello World"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_error(Protocol::HTTP1::BadHeader)
+		end
 	end
 	
 	context 'bad responses' do
@@ -256,7 +266,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 				server.write_headers(
 					[["id", "5\rSet-Cookie: foo-bar"]]
 				)
-			end.to raise_error(Protocol::HTTP1::BadResponse)
+			end.to raise_error(Protocol::HTTP1::BadHeader)
 		end
 		
 		it 'should fail if headers contain \n characters' do
@@ -264,7 +274,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 				server.write_headers(
 					[["id", "5\nSet-Cookie: foo-bar"]]
 				)
-			end.to raise_error(Protocol::HTTP1::BadResponse)
+			end.to raise_error(Protocol::HTTP1::BadHeader)
 		end
 	end
 end

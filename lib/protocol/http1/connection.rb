@@ -45,7 +45,15 @@ module Protocol
 		
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+-\.^_`|~0-9a-zA-Z]+/.freeze
-		REQUEST_LINE = /^(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)$/.freeze
+		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
+		
+		# HTTP/1.x header parser:
+		FIELD_NAME = TOKEN
+		FIELD_VALUE = /[^\000-\037]*/.freeze
+		HEADER = /\A(#{FIELD_NAME}):\s*(#{FIELD_VALUE})\s*\z/.freeze
+		
+		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/
+		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/
 		
 		class Connection
 			CRLF = "\r\n".freeze
@@ -140,7 +148,18 @@ module Protocol
 			
 			def write_headers(headers)
 				headers.each do |name, value|
-					raise BadResponse, "invalid value for header #{name}: #{value.inspect}" if value.match?(/\r|\n/)
+					# Convert it to a string:
+					name = name.to_s
+					value = value.to_s
+					
+					# Validate it:
+					unless name.match?(VALID_FIELD_NAME)
+						raise BadHeader, "Invalid header name: #{name.inspect}"
+					end
+					
+					unless value.match?(VALID_FIELD_VALUE)
+						raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
+					end
 					
 					@stream.write("#{name}: #{value}\r\n")
 				end
@@ -194,10 +213,13 @@ module Protocol
 				fields = []
 				
 				while line = read_line
-					if line =~ /^([a-zA-Z\-\d]+):\s*(.+?)\s*$/
-						fields << [$1, $2]
+					# Empty line indicates end of headers:
+					break if line.empty?
+					
+					if match = line.match(HEADER)
+						fields << [match[1], match[2]]
 					else
-						break
+						raise BadHeader, "Could not parse header: #{line.dump}"
 					end
 				end
 				

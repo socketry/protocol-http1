@@ -32,6 +32,9 @@ module Protocol
 		class BadRequest < Error
 		end
 		
+		class BadHeader < Error
+		end
+		
 		class BadResponse < Error
 		end
 	end
