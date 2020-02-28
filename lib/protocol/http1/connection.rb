@@ -140,7 +140,7 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				# Safari WebSockets break if no reason is given.
+				# Safari WebSockets break if no reason is given:
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
@@ -161,6 +161,7 @@ module Protocol
 						raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
 					end
 					
+					# Write it:
 					@stream.write("#{name}: #{value}\r\n")
 				end
 			end
