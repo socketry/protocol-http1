@@ -28,6 +28,7 @@ require_relative 'error'
 require_relative 'body/chunked'
 require_relative 'body/fixed'
 require_relative 'body/remainder'
+require 'protocol/http/body/head'
 
 require 'protocol/http/methods'
 
@@ -378,6 +379,10 @@ module Protocol
 				Body::Remainder.new(@stream)
 			end
 			
+			def read_head_body(length)
+				Protocol::HTTP::Body::Head.new(length)
+			end
+			
 			def read_tunnel_body
 				read_remainder_body
 			end
@@ -396,7 +401,23 @@ module Protocol
 				# code is always terminated by the first empty line after the
 				# header fields, regardless of the header fields present in the
 				# message, and thus cannot contain a message body.
-				if method == HTTP::Methods::HEAD or (status >= 100 and status < 200) or status == 204 or status == 304
+				if method == HTTP::Methods::HEAD
+					if content_length = headers.delete(CONTENT_LENGTH)
+						length = Integer(content_length)
+						
+						if length > 0
+							return read_head_body(length)
+						elsif length == 0
+							return nil
+						else
+							raise BadRequest, "Invalid content length: #{content_length}"
+						end
+					else
+						return nil
+					end
+				end
+				
+				if (status >= 100 and status < 200) or status == 204 or status == 304
 					return nil
 				end
 				

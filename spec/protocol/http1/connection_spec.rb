@@ -165,13 +165,28 @@ RSpec.describe Protocol::HTTP1::Connection do
 	end
 	
 	describe '#read_response_body' do
-		it "should ignore body for informational responses" do
-			client.close
+		context "with GET" do
+			it "should ignore body for informational responses" do
+				expect(client.read_response_body("GET", 100, {'content-length' => '10'})).to be_nil
+			end
+		end
+		
+		context "with HEAD" do
+			it "can read length of head response" do
+				body = client.read_response_body("HEAD", 200, {'content-length' => 3773})
+				
+				expect(body).to be_kind_of ::Protocol::HTTP::Body::Head
+				expect(body.length).to be == 3773
+				expect(body.read).to be nil
+			end
 			
-			expect(client.read_response_body("GET", 100, {'content-length' => '10'})).to be_nil
+			it "ignores zero length body" do
+				body = client.read_response_body("HEAD", 200, {'content-length' => 0})
+				
+				expect(body).to be_nil
+			end
 		end
 	end
-	
 	
 	describe '#write_chunked_body' do
 		it "can generate and read chunked response" do
