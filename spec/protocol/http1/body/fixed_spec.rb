@@ -78,6 +78,17 @@ RSpec.describe Protocol::HTTP1::Body::Fixed do
 			end
 		end
 		
+		context "when provided lengthis larger than stream size" do
+			subject {described_class.new(buffer, 20)}
+			
+			it "retrieves content up to provided length" do
+				expect do
+					subject.read
+					subject.read
+				end.to raise_error(EOFError)
+			end
+		end
+		
 		context "with large stream" do
 			let(:content) {"a" * 5*1024*1024}
 			
