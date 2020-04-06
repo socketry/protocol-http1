@@ -67,8 +67,11 @@ module Protocol
 						return nil
 					end
 					
-					chunk = @stream.read(length)
-					read_line # Consume the trailing CRLF
+					# Read trailing CRLF:
+					chunk = @stream.read(length + 2)
+					
+					# ...and chomp it off:
+					chunk.chomp!(CRLF)
 					
 					@length += length
 					@count += 1

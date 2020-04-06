@@ -72,7 +72,7 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 		context "with large stream" do
 			let!(:content) {"a" * 1024 * 10}
 			
-			it "allocates expected amount of memory" do
+			xit "allocates expected amount of memory" do
 				subject
 				
 				expect do
@@ -84,7 +84,7 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 		end
 		
 		context "with trailers" do
-			let(:postfix) {"ETag: abcd\r\n\r\n"}
+			let(:postfix) {"ETag: abcd\r\n"}
 			
 			it "can read trailing etag" do
 				headers.add('trailers', 'etag')
