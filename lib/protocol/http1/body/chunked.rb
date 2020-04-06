@@ -26,10 +26,14 @@ module Protocol
 	module HTTP1
 		module Body
 			class Chunked < HTTP::Body::Readable
-				# TODO maybe this should take a stream rather than a connection?
-				def initialize(stream)
+				TRAILERS = 'trailers'
+				
+				def initialize(stream, headers)
 					@stream = stream
 					@finished = false
+					
+					@headers = headers
+					@trailers = headers[TRAILERS]
 					
 					@length = 0
 					@count = 0
@@ -49,6 +53,7 @@ module Protocol
 					super
 				end
 				
+				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
 				def read
 					return nil if @finished
 					
@@ -56,7 +61,8 @@ module Protocol
 					
 					if length == 0
 						@finished = true
-						read_line
+						
+						read_trailers
 						
 						return nil
 					end
@@ -78,6 +84,19 @@ module Protocol
 				
 				def read_line
 					@stream.gets(chomp: true)
+				end
+				
+				def read_trailers
+					while line = read_line
+						# Empty line indicates end of headers:
+						break if line.empty?
+						
+						if match = line.match(HEADER)
+							@headers.add(match[1], match[2])
+						else
+							raise BadHeader, "Could not parse header: #{line.dump}"
+						end
+					end
 				end
 			end
 		end

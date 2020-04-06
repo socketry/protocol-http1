@@ -307,7 +307,7 @@ module Protocol
 				end
 			end
 			
-			def write_chunked_body(body, head)
+			def write_chunked_body(body, head, trailers = nil)
 				@stream.write("transfer-encoding: chunked\r\n\r\n")
 				@stream.flush
 				
@@ -326,7 +326,14 @@ module Protocol
 					@stream.flush
 				end
 				
-				@stream.write("0\r\n\r\n")
+				if trailers
+					@stream.write("0\r\n")
+					write_headers(trailers)
+					@stream.write("\r\n")
+				else
+					@stream.write("0\r\n\r\n")
+				end
+				
 				@stream.flush
 			end
 			
@@ -349,7 +356,7 @@ module Protocol
 				@stream.close_write
 			end
 			
-			def write_body(version, body, head = false)
+			def write_body(version, body, head = false, trailers = nil)
 				if body.nil? or body.empty?
 					write_connection_header(version)
 					write_empty_body(body)
@@ -359,7 +366,7 @@ module Protocol
 				elsif @persistent and version == HTTP11
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
-					write_chunked_body(body, head)
+					write_chunked_body(body, head, trailers)
 				else
 					@persistent = false
 					write_connection_header(version)
@@ -367,8 +374,8 @@ module Protocol
 				end
 			end
 			
-			def read_chunked_body
-				Body::Chunked.new(@stream)
+			def read_chunked_body(headers)
+				Body::Chunked.new(@stream, headers)
 			end
 			
 			def read_fixed_body(length)
@@ -466,7 +473,7 @@ module Protocol
 					end
 					
 					if transfer_encoding.last == CHUNKED
-						return read_chunked_body
+						return read_chunked_body(headers)
 					else
 						# If a Transfer-Encoding header field is present in a response and
 						# the chunked transfer coding is not the final encoding, the
@@ -479,7 +486,7 @@ module Protocol
 						return read_remainder_body
 					end
 				end
-
+				
 				# 5.  If a valid Content-Length header field is present without
 				# Transfer-Encoding, its decimal value defines the expected message
 				# body length in octets.  If the sender closes the connection or

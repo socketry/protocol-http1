@@ -29,10 +29,12 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 	include_context RSpec::Files::Buffer
 	
 	let(:content) {"Hello World"}
-	subject! {described_class.new(buffer)}
+	let(:postfix) {nil}
+	let(:headers) {Protocol::HTTP::Headers.new}
+	subject {described_class.new(buffer, headers)}
 	
 	before do
-		buffer.write "#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n\r\n"
+		buffer.write "#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n#{postfix}\r\n"
 		buffer.seek(0)
 	end
 	
@@ -71,11 +73,27 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 			let!(:content) {"a" * 1024 * 10}
 			
 			it "allocates expected amount of memory" do
+				subject
+				
 				expect do
 					while chunk = subject.read
 						chunk.clear
 					end
 				end.to limit_allocations.of(String, size: 0).of(Hash, count: 8)
+			end
+		end
+		
+		context "with trailers" do
+			let(:postfix) {"ETag: abcd\r\n\r\n"}
+			
+			it "can read trailing etag" do
+				headers.add('trailers', 'etag')
+				
+				expect(subject.read).to be == "Hello World"
+				expect(headers['etag']).to be_nil
+				
+				expect(subject.read).to be == nil
+				expect(headers['etag']).to be == 'abcd'
 			end
 		end
 	end
