@@ -239,13 +239,13 @@ RSpec.describe Protocol::HTTP1::Connection do
 		
 		it "can write empty body" do
 			expect(body).to receive(:empty?).and_return(true)
+			expect(body).to receive(:length).and_return(false)
 			
 			expect(server).to receive(:write_empty_body)
 			server.write_body("HTTP/1.0", body)
 		end
 		
 		it "can write fixed length body" do
-			expect(body).to receive(:empty?).and_return(false)
 			expect(body).to receive(:length).and_return(1024)
 			
 			expect(server).to receive(:write_fixed_length_body)
