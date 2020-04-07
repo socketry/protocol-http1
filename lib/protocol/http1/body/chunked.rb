@@ -90,8 +90,6 @@ module Protocol
 				end
 				
 				def read_trailers
-					@headers.trailers!
-					
 					while line = read_line
 						# Empty line indicates end of headers:
 						break if line.empty?

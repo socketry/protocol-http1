@@ -140,6 +140,8 @@ module Protocol
 				@stream.write("host: #{authority}\r\n")
 				
 				write_headers(headers)
+				
+				headers.trailers!
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
@@ -147,6 +149,8 @@ module Protocol
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
+				
+				headers.trailers!
 			end
 			
 			def write_headers(headers)
@@ -357,12 +361,16 @@ module Protocol
 			end
 			
 			def write_body(version, body, head = false, trailers = nil)
-				if body.nil? or body.empty?
+				if body.nil?
 					write_connection_header(version)
 					write_empty_body(body)
-				elsif length = body.length
+				elsif length = body.length and (VERSION != HTTP11 && trailers.nil?)
 					write_connection_header(version)
 					write_fixed_length_body(body, length, head)
+				elsif body.empty?
+					# Even thought this code is the same as the first clause `body.nil?`, HEAD responses have an empty body but still carry a content length. `write_fixed_length_body` takes care of this appropriately.
+					write_connection_header(version)
+					write_empty_body(body)
 				elsif @persistent and version == HTTP11
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
