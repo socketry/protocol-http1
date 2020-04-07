@@ -140,8 +140,6 @@ module Protocol
 				@stream.write("host: #{authority}\r\n")
 				
 				write_headers(headers)
-				
-				headers.trailers!
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
@@ -149,8 +147,6 @@ module Protocol
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
-				
-				headers.trailers!
 			end
 			
 			def write_headers(headers)
