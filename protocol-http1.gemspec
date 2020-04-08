@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 	spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
 	spec.require_paths = ["lib"]
 	
-	spec.add_dependency "protocol-http", "~> 0.17"
+	spec.add_dependency "protocol-http", "~> 0.18"
 	
 	spec.add_development_dependency "covered"
 	spec.add_development_dependency "bundler"
