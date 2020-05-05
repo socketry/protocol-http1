@@ -38,6 +38,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 		end
 		
 		it "should use non-chunked output" do
+			expect(body).to receive(:ready?).and_return(false)
 			expect(body).to receive(:empty?).and_return(false)
 			expect(body).to receive(:length).and_return(nil)
 			expect(body).to receive(:each).and_return(nil)

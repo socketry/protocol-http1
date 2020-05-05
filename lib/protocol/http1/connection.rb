@@ -281,13 +281,16 @@ module Protocol
 			
 			def write_fixed_length_body(body, length, head)
 				@stream.write("content-length: #{length}\r\n\r\n")
-				@stream.flush
 				
 				if head
+					@stream.flush
+					
 					body.close
 					
 					return
 				end
+				
+				@stream.flush unless body.ready?
 				
 				chunk_length = 0
 				body.each do |chunk|
@@ -309,13 +312,16 @@ module Protocol
 			
 			def write_chunked_body(body, head, trailers = nil)
 				@stream.write("transfer-encoding: chunked\r\n\r\n")
-				@stream.flush
 				
 				if head
+					@stream.flush
+					
 					body.close
 					
 					return
 				end
+				
+				@stream.flush unless body.ready?
 				
 				body.each do |chunk|
 					next if chunk.size == 0
@@ -323,7 +329,8 @@ module Protocol
 					@stream.write("#{chunk.bytesize.to_s(16).upcase}\r\n")
 					@stream.write(chunk)
 					@stream.write(CRLF)
-					@stream.flush
+					
+					@stream.flush unless body.ready?
 				end
 				
 				if trailers
@@ -342,14 +349,15 @@ module Protocol
 				@persistent = false
 				
 				@stream.write("\r\n")
-				@stream.flush
+				@stream.flush unless body.ready?
 				
 				if head
 					body.close
 				else
 					body.each do |chunk|
 						@stream.write(chunk)
-						@stream.flush
+						
+						@stream.flush unless body.ready?
 					end
 				end
 				

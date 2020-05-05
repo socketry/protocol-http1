@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 require 'protocol/http1/connection'
+require 'protocol/http/body/buffered'
+
 require_relative 'connection_context'
 
 RSpec.describe Protocol::HTTP1::Connection do
@@ -189,10 +191,11 @@ RSpec.describe Protocol::HTTP1::Connection do
 	end
 	
 	describe '#write_chunked_body' do
+		let(:chunks) {["Hello", "World"]}
+		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
+		
 		it "can generate and read chunked response" do
-			chunks = ["Hello", "World"]
-			
-			server.write_chunked_body(chunks, false)
+			server.write_chunked_body(body, false)
 			server.close
 			
 			headers = client.read_headers
@@ -206,7 +209,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 			chunks = ["Hello", "World"]
 			
 			server.write_headers({'trailers' => 'etag'})
-			server.write_chunked_body(chunks, false, {'etag' => 'abcd'})
+			server.write_chunked_body(body, false, {'etag' => 'abcd'})
 			server.close
 			
 			headers = client.read_headers
@@ -220,10 +223,11 @@ RSpec.describe Protocol::HTTP1::Connection do
 	end
 	
 	describe '#write_fixed_length_body' do
+		let(:chunks) {["Hello", "World"]}
+		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
+		
 		it "can generate and read chunked response" do
-			chunks = ["Hello", "World"]
-			
-			server.write_fixed_length_body(chunks, 10, false)
+			server.write_fixed_length_body(body, 10, false)
 			server.close
 			
 			headers = client.read_headers
