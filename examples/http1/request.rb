@@ -19,13 +19,9 @@ Async do
 	stream = Async::IO::Stream.new(peer)
 	client = Protocol::HTTP1::Connection.new(stream)
 	
-	def client.read_line
-		@stream.read_until(Protocol::HTTP1::Connection::CRLF) or raise EOFError
-	end
-	
 	puts "Writing request..."
 	client.write_request("www.google.com", "GET", "/search?q=kittens", "HTTP/1.1", [["Accept", "*/*"]])
-	client.write_body(nil)
+	client.write_body("HTTP/1.1", nil)
 	
 	puts "Reading response..."
 	response = client.read_response("GET")
