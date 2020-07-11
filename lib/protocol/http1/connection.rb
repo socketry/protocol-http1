@@ -136,8 +136,14 @@ module Protocol
 			end
 			
 			def write_request(authority, method, path, version, headers)
+				host = authority
+				if headers.include?("host")
+					host = headers["host"]
+					headers.delete "host"
+				end
+				
 				@stream.write("#{method} #{path} #{version}\r\n")
-				@stream.write("host: #{authority}\r\n")
+				@stream.write("host: #{host}\r\n")
 				
 				write_headers(headers)
 			end
