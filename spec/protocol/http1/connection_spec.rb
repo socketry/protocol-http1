@@ -265,6 +265,14 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(server).to receive(:write_chunked_body)
 			server.write_body("HTTP/1.1", body)
 		end
+
+		it "always writes chunked body for HTTP/1.1" do
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(1024)
+			
+			expect(server).to receive(:write_chunked_body)
+			server.write_body("HTTP/1.1", body)
+		end
 		
 		it "can write closed body" do
 			expect(server.persistent).to be true
