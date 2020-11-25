@@ -368,7 +368,7 @@ module Protocol
 				if body.nil?
 					write_connection_header(version)
 					write_empty_body(body)
-				elsif length = body.length and (version != HTTP11 && trailers.nil?)
+				elsif length = body.length and trailers.nil?
 					write_connection_header(version)
 					write_fixed_length_body(body, length, head)
 				elsif body.empty?
