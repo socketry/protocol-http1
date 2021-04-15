@@ -56,8 +56,11 @@ module Protocol
 				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
 				def read
 					return nil if @finished
+
+					chunk_size_line = read_line
+					return nil unless chunk_size_line
 					
-					length = read_line.to_i(16)
+					length = chunk_size_line.to_i(16)
 					
 					if length == 0
 						@finished = true
@@ -69,6 +72,7 @@ module Protocol
 					
 					# Read trailing CRLF:
 					chunk = @stream.read(length + 2)
+					return nil unless chunk
 					
 					# ...and chomp it off:
 					chunk.chomp!(CRLF)
