@@ -195,6 +195,8 @@ module Protocol
 				@count += 1
 				
 				return headers.delete(HOST), method, path, version, headers, body
+			rescue IOError
+				return nil
 			end
 			
 			def read_response(method)
