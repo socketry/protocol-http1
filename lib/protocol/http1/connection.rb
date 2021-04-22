@@ -171,6 +171,8 @@ module Protocol
 			
 			def read_line?
 				@stream.gets(CRLF, chomp: true)
+			rescue IOError, Errno::ECONNRESET
+				return nil
 			end
 			
 			def read_line
