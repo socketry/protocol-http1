@@ -205,15 +205,15 @@ RSpec.describe Protocol::HTTP1::Connection do
 			expect(body.join).to be == chunks.join
 		end
 		
-		it "can generate and read trailers" do
+		it "can generate and read trailer" do
 			chunks = ["Hello", "World"]
 			
-			server.write_headers({'trailers' => 'etag'})
+			server.write_headers({'trailer' => 'etag'})
 			server.write_chunked_body(body, false, {'etag' => 'abcd'})
 			server.close
 			
 			headers = client.read_headers
-			expect(headers).to be == [['trailers', 'etag'], ['transfer-encoding', 'chunked']]
+			expect(headers).to be == [['trailer', 'etag'], ['transfer-encoding', 'chunked']]
 			
 			body = client.read_body(headers, false)
 			expect(body.join).to be == chunks.join

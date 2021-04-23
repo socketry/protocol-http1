@@ -26,7 +26,6 @@ module Protocol
 	module HTTP1
 		module Body
 			class Chunked < HTTP::Body::Readable
-				TRAILERS = 'trailers'
 				CRLF = "\r\n"
 				
 				def initialize(stream, headers)
@@ -62,7 +61,7 @@ module Protocol
 					if length == 0
 						@finished = true
 						
-						read_trailers
+						read_trailer
 						
 						return nil
 					end
@@ -89,9 +88,9 @@ module Protocol
 					@stream.gets(CRLF, chomp: true)
 				end
 				
-				def read_trailers
+				def read_trailer
 					while line = read_line
-						# Empty line indicates end of headers:
+						# Empty line indicates end of trailer:
 						break if line.empty?
 						
 						if match = line.match(HEADER)

@@ -83,11 +83,11 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 			end
 		end
 		
-		context "with trailers" do
+		context "with trailer" do
 			let(:postfix) {"ETag: abcd\r\n"}
 			
 			it "can read trailing etag" do
-				headers.add('trailers', 'etag')
+				headers.add('trailer', 'etag')
 				
 				expect(subject.read).to be == "Hello World"
 				expect(headers['etag']).to be_nil

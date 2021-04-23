@@ -301,6 +301,7 @@ module Protocol
 					end
 					
 					@stream.write(chunk)
+					@stream.flush unless body.ready?
 				end
 				
 				@stream.flush
@@ -310,7 +311,7 @@ module Protocol
 				end
 			end
 			
-			def write_chunked_body(body, head, trailers = nil)
+			def write_chunked_body(body, head, trailer = nil)
 				@stream.write("transfer-encoding: chunked\r\n\r\n")
 				
 				if head
@@ -333,9 +334,9 @@ module Protocol
 					@stream.flush unless body.ready?
 				end
 				
-				if trailers
+				if trailer
 					@stream.write("0\r\n")
-					write_headers(trailers)
+					write_headers(trailer)
 					@stream.write("\r\n")
 				else
 					@stream.write("0\r\n\r\n")
@@ -364,11 +365,11 @@ module Protocol
 				@stream.close_write
 			end
 			
-			def write_body(version, body, head = false, trailers = nil)
+			def write_body(version, body, head = false, trailer = nil)
 				if body.nil?
 					write_connection_header(version)
 					write_empty_body(body)
-				elsif length = body.length and trailers.nil?
+				elsif length = body.length and trailer.nil?
 					write_connection_header(version)
 					write_fixed_length_body(body, length, head)
 				elsif body.empty?
@@ -378,7 +379,7 @@ module Protocol
 				elsif @persistent and version == HTTP11
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
-					write_chunked_body(body, head, trailers)
+					write_chunked_body(body, head, trailer)
 				else
 					@persistent = false
 					write_connection_header(version)
