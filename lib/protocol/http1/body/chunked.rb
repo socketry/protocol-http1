@@ -56,6 +56,7 @@ module Protocol
 				def read
 					return nil if @finished
 					
+					# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
 					length = read_line.to_i(16)
 					
 					if length == 0
@@ -84,12 +85,16 @@ module Protocol
 				
 				private
 				
-				def read_line
+				def read_line?
 					@stream.gets(CRLF, chomp: true)
 				end
 				
+				def read_line
+					read_line? or raise EOFError
+				end
+				
 				def read_trailer
-					while line = read_line
+					while line = read_line?
 						# Empty line indicates end of trailer:
 						break if line.empty?
 						
