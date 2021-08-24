@@ -376,7 +376,7 @@ module Protocol
 					# Even thought this code is the same as the first clause `body.nil?`, HEAD responses have an empty body but still carry a content length. `write_fixed_length_body` takes care of this appropriately.
 					write_connection_header(version)
 					write_empty_body(body)
-				elsif @persistent and version == HTTP11
+				elsif version == HTTP11
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
 					write_chunked_body(body, head, trailer)
