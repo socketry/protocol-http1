@@ -39,7 +39,13 @@ RSpec.describe Protocol::HTTP1::Connection do
 			server.write_body("HTTP/1.0", body, false, trailer)
 		end
 		
-		it "choose chunked encoding when given trailers" do
+		it "ignores trailers with content length" do
+			expect(server).to receive(:write_fixed_length_body)
+			server.write_body("HTTP/1.1", body, false, trailer)
+		end
+		
+		it "uses chunked encoding when given trailers without content length" do
+			expect(body).to receive(:length).and_return(nil)
 			trailer['foo'] = 'bar'
 			
 			server.write_response("HTTP/1.1", 200, {})
