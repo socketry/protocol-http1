@@ -366,6 +366,13 @@ module Protocol
 			end
 			
 			def write_body(version, body, head = false, trailer = nil)
+				# HTTP/1.0 cannot in any case handle trailers.
+				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
+					trailer = nil
+				end
+				
+				# While writing the body, we don't know if trailers will be added. We must choose a different body format depending on whether there is the chance of trailers, even if trailer.any? is currently false.
+				
 				if body.nil?
 					write_connection_header(version)
 					write_empty_body(body)
