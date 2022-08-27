@@ -88,16 +88,6 @@ RSpec.describe Protocol::HTTP1::Body::Fixed do
 				end.to raise_error(EOFError)
 			end
 		end
-		
-		context "with large stream" do
-			let(:content) {"a" * 5*1024*1024}
-			
-			it "allocates expected amount of memory" do
-				expect do
-					subject.read.clear until subject.empty?
-				end.to limit_allocations(size: 0)
-			end
-		end
 	end
 	
 	describe "#join" do

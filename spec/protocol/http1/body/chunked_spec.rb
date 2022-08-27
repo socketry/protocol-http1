@@ -69,20 +69,6 @@ RSpec.describe Protocol::HTTP1::Body::Chunked do
 			expect(subject).to be_empty
 		end
 		
-		context "with large stream" do
-			let!(:content) {"a" * 1024 * 10}
-			
-			xit "allocates expected amount of memory" do
-				subject
-				
-				expect do
-					while chunk = subject.read
-						chunk.clear
-					end
-				end.to limit_allocations.of(String, size: 0).of(Hash, count: 8)
-			end
-		end
-		
 		context "with trailer" do
 			let(:postfix) {"ETag: abcd\r\n"}
 			
