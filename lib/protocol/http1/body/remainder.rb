@@ -47,7 +47,8 @@ module Protocol
 				# TODO this is a bit less efficient in order to maintain compatibility with `IO`.
 				def read
 					@stream.readpartial(BLOCK_SIZE)
-				rescue EOFError
+				rescue EOFError, IOError
+					# I noticed that in some cases you will get EOFError, and in other cases IOError!?
 					return nil
 				end
 				
