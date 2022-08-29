@@ -2,7 +2,7 @@
 
 Provides a low-level implementation of the HTTP/1 protocol.
 
-[![Development Status](https://github.com/socketry/protocol-http1/workflows/Development/badge.svg)](https://github.com/socketry/protocol-http1/actions?workflow=Development)
+[![Development Status](https://github.com/socketry/protocol-http1/workflows/Test/badge.svg)](https://github.com/socketry/protocol-http1/actions?workflow=Test)
 
 ## Installation
 
