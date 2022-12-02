@@ -14,7 +14,7 @@ RSpec.describe Protocol::HTTP1::Connection do
 		let(:request_version) {Protocol::HTTP1::Connection::HTTP10}
 		
 		it "should upgrade connection" do
-			client.write_request("testing.com", "GET", "/", request_version, [])
+			client.write_request("testing.com", "GET", "/", request_version, Protocol::HTTP::Headers.new)
 			stream = client.write_upgrade_body(protocol)
 			
 			stream.write "Hello World"
