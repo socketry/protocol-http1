@@ -13,6 +13,10 @@ module Protocol
 		class InvalidRequest < Error
 		end
 		
+		# The specified content length and the given content's length do not match.
+		class ContentLengthError < Error
+		end
+		
 		# The request was parsed correctly, but was invalid for some other reason.
 		class BadRequest < Error
 		end

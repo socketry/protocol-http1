@@ -4,12 +4,12 @@
 # Copyright, 2019-2022, by Samuel Williams.
 
 require 'protocol/http1/connection'
-require_relative 'connection_context'
+require 'connection_context'
 
-RSpec.describe Protocol::HTTP1::Connection do
-	include_context Protocol::HTTP1::Connection
+describe Protocol::HTTP1::Connection do
+	include_context ConnectionContext
 	
-	describe '#upgrade' do
+	with '#upgrade' do
 		let(:protocol) {'binary'}
 		let(:request_version) {Protocol::HTTP1::Connection::HTTP10}
 		

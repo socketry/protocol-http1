@@ -31,7 +31,7 @@ module Protocol
 		UPGRADE = 'upgrade'
 		
 		# HTTP/1.x request line parser:
-		TOKEN = /[!#$%&'*+-\.^_`|~0-9a-zA-Z]+/.freeze
+		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
 		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
 		
 		# HTTP/1.x header parser:
@@ -62,12 +62,6 @@ module Protocol
 			
 			# The number of requests processed.
 			attr :count
-			
-			def upgrade?(headers)
-				if upgrade = headers[UPGRADE]
-					return upgrade
-				end
-			end
 			
 			def persistent?(version, method, headers)
 				if method == HTTP::Methods::CONNECT
@@ -281,7 +275,7 @@ module Protocol
 					chunk_length += chunk.bytesize
 					
 					if chunk_length > length
-						raise Error, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
+						raise ContentLengthError, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
 					end
 					
 					@stream.write(chunk)
@@ -291,7 +285,7 @@ module Protocol
 				@stream.flush
 				
 				if chunk_length != length
-					raise Error, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
+					raise ContentLengthError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
 				end
 			end
 			
@@ -400,12 +394,18 @@ module Protocol
 				read_remainder_body
 			end
 			
-			def read_upgrade_body(protocol)
-				read_remainder_body
-			end
-			
 			HEAD = "HEAD"
 			CONNECT = "CONNECT"
+			
+			def extract_content_length(headers)
+				if content_length = headers.delete(CONTENT_LENGTH)
+					if length = Integer(content_length, exception: false) and length >= 0
+						yield length
+					else
+						raise BadRequest, "Invalid content length: #{content_length}"
+					end
+				end
+			end
 			
 			def read_response_body(method, status, headers)
 				# RFC 7230 3.3.3
@@ -415,19 +415,16 @@ module Protocol
 				# header fields, regardless of the header fields present in the
 				# message, and thus cannot contain a message body.
 				if method == HTTP::Methods::HEAD
-					if content_length = headers.delete(CONTENT_LENGTH)
-						length = Integer(content_length)
-						
+					extract_content_length(headers) do |length|
 						if length > 0
 							return read_head_body(length)
-						elsif length == 0
-							return nil
 						else
-							raise BadRequest, "Invalid content length: #{content_length}"
+							return nil
 						end
-					else
-						return nil
 					end
+					
+					# There is no body for a HEAD request if there is no content length:
+					return nil
 				end
 				
 				if (status >= 100 and status < 200) or status == 204 or status == 304
@@ -499,14 +496,11 @@ module Protocol
 				# the recipient times out before the indicated number of octets are
 				# received, the recipient MUST consider the message to be
 				# incomplete and close the connection.
-				if content_length = headers.delete(CONTENT_LENGTH)
-					length = Integer(content_length)
+				extract_content_length(headers) do |length|
 					if length > 0
 						return read_fixed_body(length)
-					elsif length == 0
-						return nil
 					else
-						raise BadRequest, "Invalid content length: #{content_length}"
+						return nil
 					end
 				end
 				

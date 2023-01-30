@@ -7,6 +7,8 @@ source "https://rubygems.org"
 
 gemspec
 
+gem "stringio", git: "https://github.com/ruby/stringio"
+
 group :maintenance, optional: true do
 	gem "bake-modernize"
 	gem "bake-gem"

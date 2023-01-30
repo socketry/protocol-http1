@@ -5,8 +5,8 @@
 
 require 'protocol/http1/version'
 
-RSpec.describe Protocol::HTTP1 do
+describe Protocol::HTTP1 do
 	it "has a version number" do
-		expect(Protocol::HTTP1::VERSION).not_to be nil
+		expect(Protocol::HTTP1::VERSION).not.to be_nil
 	end
 end
