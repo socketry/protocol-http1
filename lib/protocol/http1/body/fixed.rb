@@ -39,6 +39,8 @@ module Protocol
 							@remaining -= chunk.bytesize
 							
 							return chunk
+						# else
+						# 	raise EOFError, "Stream closed with #{@remaining} bytes remaining!"
 						end
 					end
 				end
