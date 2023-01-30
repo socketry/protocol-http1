@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2022, by Samuel Williams.
+# Copyright, 2022-2023, by Samuel Williams.
 
 require 'protocol/http1/connection'
 require 'protocol/http/body/buffered'
 
-require_relative 'connection_context'
+require 'connection_context'
 
-RSpec.describe Protocol::HTTP1::Connection do
-	include_context Protocol::HTTP1::Connection
+describe Protocol::HTTP1::Connection do
+	include_context ConnectionContext
 	
 	let(:chunks) {["Hello", "World"]}
 	let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
 	
 	let(:trailer) {Hash.new}
 	
-	context 'with trailers' do
+	with 'trailers' do
 		it "ignores trailers with HTTP/1.0" do
 			expect(server).to receive(:write_fixed_length_body)
 			server.write_body("HTTP/1.0", body, false, trailer)
