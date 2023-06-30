@@ -7,8 +7,6 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "stringio", git: "https://github.com/ruby/stringio"
-
 group :maintenance, optional: true do
 	gem "bake-modernize"
 	gem "bake-gem"
@@ -18,6 +16,11 @@ group :maintenance, optional: true do
 end
 
 group :test do
+	gem "covered"
+	gem "sus"
+	
 	gem "bake-test"
 	gem "bake-test-external"
+	
+	gem "stringio", "~> 3.0.7"
 end
