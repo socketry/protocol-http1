@@ -405,7 +405,7 @@ module Protocol
 					if content_length =~ VALID_CONTENT_LENGTH
 						yield Integer(content_length, 10)
 					else
-						raise BadRequest, "Invalid content length: #{content_length}"
+						raise BadRequest, "Invalid content length: #{content_length.dump}"
 					end
 				end
 			end
