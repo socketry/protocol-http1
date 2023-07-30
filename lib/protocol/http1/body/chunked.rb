@@ -35,12 +35,20 @@ module Protocol
 					super
 				end
 				
+				VALID_CHUNK_LENGTH = /\A[0-9a-fA-F]+\z/
+				
 				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
 				def read
 					return nil if @finished
 					
+					length, extensions = read_line.split(";", 2)
+					
+					unless length =~ VALID_CHUNK_LENGTH
+						raise BadRequest, "Invalid chunk length: #{length.dump}"
+					end
+					
 					# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
-					length = read_line.to_i(16)
+					length = Integer(length, 16)
 					
 					if length == 0
 						@finished = true

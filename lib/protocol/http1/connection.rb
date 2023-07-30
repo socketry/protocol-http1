@@ -398,10 +398,12 @@ module Protocol
 			HEAD = "HEAD"
 			CONNECT = "CONNECT"
 			
+			VALID_CONTENT_LENGTH = /\A\d+\z/
+			
 			def extract_content_length(headers)
 				if content_length = headers.delete(CONTENT_LENGTH)
-					if length = Integer(content_length, exception: false) and length >= 0
-						yield length
+					if content_length =~ VALID_CONTENT_LENGTH
+						yield Integer(content_length, 10)
 					else
 						raise BadRequest, "Invalid content length: #{content_length}"
 					end

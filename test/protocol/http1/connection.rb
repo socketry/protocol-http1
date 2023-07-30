@@ -208,7 +208,7 @@ describe Protocol::HTTP1::Connection do
 		
 		with "HEAD" do
 			it "can read length of head response" do
-				body = client.read_response_body("HEAD", 200, {'content-length' => 3773})
+				body = client.read_response_body("HEAD", 200, {'content-length' => '3773'})
 				
 				expect(body).to be_a ::Protocol::HTTP::Body::Head
 				expect(body.length).to be == 3773
@@ -216,7 +216,7 @@ describe Protocol::HTTP1::Connection do
 			end
 			
 			it "ignores zero length body" do
-				body = client.read_response_body("HEAD", 200, {'content-length' => 0})
+				body = client.read_response_body("HEAD", 200, {'content-length' => '0'})
 				
 				expect(body).to be_nil
 			end
