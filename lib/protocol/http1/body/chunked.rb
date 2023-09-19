@@ -41,7 +41,7 @@ module Protocol
 				def read
 					return nil if @finished
 					
-					length, extensions = read_line.split(";", 2)
+					length, _extensions = read_line.split(";", 2)
 					
 					unless length =~ VALID_CHUNK_LENGTH
 						raise BadRequest, "Invalid chunk length: #{length.dump}"
