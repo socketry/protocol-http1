@@ -128,6 +128,15 @@ module Protocol
 				write_headers(headers)
 			end
 			
+			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
+				@stream.write("#{version} #{status} #{reason}\r\n")
+				
+				write_headers(headers)
+				
+				@stream.write("\r\n")
+				@stream.flush
+			end
+			
 			def write_headers(headers)
 				headers.each do |name, value|
 					# Convert it to a string:
