@@ -127,6 +127,15 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
+	with '#write_interim_response' do
+		it 'can write iterm response' do
+			server.write_interim_response("HTTP/1.1", 100, {})
+			server.close
+			
+			expect(client.stream.read).to be == "HTTP/1.1 100 Continue\r\n\r\n"
+		end
+	end
+	
 	with '#persistent?' do
 		describe "HTTP 1.0" do
 			it "should not be persistent by default" do
