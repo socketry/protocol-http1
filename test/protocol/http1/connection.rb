@@ -200,12 +200,15 @@ describe Protocol::HTTP1::Connection do
 	with '#read_response_body' do
 		with "GET" do
 			it "should ignore body for informational responses" do
-				expect(client.read_response_body("GET", 100, {'content-length' => '10'})).to be_nil
+				body = client.read_response_body("GET", 100, {'content-length' => '10'})
+				expect(body).to be_a(::Protocol::HTTP1::Body::Remainder)
+				expect(client.persistent).to be == false
 			end
 			
 			it "should handle non-chunked transfer-encoding" do
 				body = client.read_response_body("GET", 200, {'transfer-encoding' => ['identity']})
 				expect(body).to be_a(::Protocol::HTTP1::Body::Remainder)
+				expect(client.persistent).to be == false
 			end
 			
 			it "should be an error if both transfer-encoding and content-length is set" do
