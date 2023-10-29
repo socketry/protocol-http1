@@ -59,8 +59,8 @@ module Protocol
 			attr :stream
 			
 			# Whether the connection is persistent.
-			# This determines what Connection headers are sent in the response and whether
-			# async-http is willing to reuse the connection/stream after the response.
+			# This determines what connection headers are sent in the response and whether
+			# the connection can be reused after the response is sent.
 			# This setting is automatically managed according to the nature of the request
 			# and response.
 			# Changing to false is safe.
