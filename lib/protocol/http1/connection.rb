@@ -59,7 +59,14 @@ module Protocol
 			attr :stream
 			
 			# Whether the connection is persistent.
-			attr :persistent
+			# This determines what connection headers are sent in the response and whether
+			# the connection can be reused after the response is sent.
+			# This setting is automatically managed according to the nature of the request
+			# and response.
+			# Changing to false is safe.
+			# Changing to true from outside this class should generally be avoided and,
+			# depending on the response semantics, may be reset to false anyway.
+			attr_accessor :persistent
 			
 			# The number of requests processed.
 			attr :count
