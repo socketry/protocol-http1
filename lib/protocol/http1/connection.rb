@@ -122,6 +122,8 @@ module Protocol
 			end
 			
 			def write_request(authority, method, path, version, headers)
+				sending_request if respond_to?(:sending_request)
+				
 				@stream.write("#{method} #{path} #{version}\r\n")
 				@stream.write("host: #{authority}\r\n")
 				
@@ -173,7 +175,11 @@ module Protocol
 			end
 			
 			def read_request
+				waiting_for_request if respond_to?(:waiting_for_request)
+
 				return unless line = read_line?
+				
+				receiving_request if respond_to?(:receiving_request)
 				
 				if match = line.match(REQUEST_LINE)
 					_, method, path, version = *match
@@ -193,11 +199,15 @@ module Protocol
 			end
 			
 			def read_response(method)
+				waiting_for_response if respond_to?(:waiting_for_response)
+				
 				version, status, reason = read_line.split(/\s+/, 3)
 				
 				status = Integer(status)
 				
 				headers = read_headers
+				
+				received_response if respond_to?(:received_response)
 				
 				@persistent = persistent?(version, method, headers)
 				
