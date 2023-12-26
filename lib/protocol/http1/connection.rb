@@ -173,7 +173,7 @@ module Protocol
 				read_line? or raise EOFError
 			end
 			
-			def read_request
+			def read_request_line
 				return unless line = read_line?
 				
 				if match = line.match(REQUEST_LINE)
@@ -181,6 +181,13 @@ module Protocol
 				else
 					raise InvalidRequest, line.inspect
 				end
+				
+				return method, path, version
+			end
+			
+			def read_request
+				method, path, version = read_request_line
+				return unless method
 				
 				headers = read_headers
 				
@@ -193,10 +200,16 @@ module Protocol
 				return headers.delete(HOST), method, path, version, headers, body
 			end
 			
-			def read_response(method)
+			def read_status_line
 				version, status, reason = read_line.split(/\s+/, 3)
 				
 				status = Integer(status)
+				
+				return version, status, reason
+			end
+			
+			def read_response(method)
+				version, status, reason = read_status_line
 				
 				headers = read_headers
 				
