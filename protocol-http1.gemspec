@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
 	spec.version = Protocol::HTTP1::VERSION
 	
 	spec.summary = "A low level implementation of the HTTP/1 protocol."
-	spec.authors = ["Samuel Williams", "Brian Morearty", "Bruno Sutic", "Olle Jonsson"]
+	spec.authors = ["Samuel Williams", "Thomas Morgan", "Brian Morearty", "Bruno Sutic", "Olle Jonsson"]
 	spec.license = "MIT"
 	
 	spec.cert_chain  = ['release.cert']
@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
 	
 	spec.files = Dir.glob(['{lib}/**/*', '*.md'], File::FNM_DOTMATCH, base: __dir__)
 	
-	spec.required_ruby_version = ">= 2.7.6b"
+	spec.required_ruby_version = ">= 3.0"
 	
 	spec.add_dependency "protocol-http", "~> 0.22"
 end

@@ -4,6 +4,7 @@ Copyright, 2019-2023, by Samuel Williams.
 Copyright, 2019, by Brian Morearty.  
 Copyright, 2020, by Olle Jonsson.  
 Copyright, 2020, by Bruno Sutic.  
+Copyright, 2023, by Thomas Morgan.  
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
