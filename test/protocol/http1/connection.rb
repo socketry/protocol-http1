@@ -18,6 +18,8 @@ describe Protocol::HTTP1::Connection do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
 			client.stream.close
 			
+			expect(server).to receive(:read_request_line)
+			
 			authority, method, target, version, headers, body = server.read_request
 			
 			expect(authority).to be == 'localhost'
@@ -186,6 +188,8 @@ describe Protocol::HTTP1::Connection do
 		it "should read successful response" do
 			server.stream.write("HTTP/1.1 200 Hello\r\nContent-Length: 0\r\n\r\n")
 			server.stream.close
+			
+			expect(client).to receive(:read_response_line)
 			
 			version, status, reason, headers, body = client.read_response("GET")
 			
