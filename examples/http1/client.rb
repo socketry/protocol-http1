@@ -1,18 +1,18 @@
+#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 # Released under the MIT License.
 # Copyright, 2019-2023, by Samuel Williams.
 
-$LOAD_PATH.unshift File.expand_path("../../lib", __dir__)
+$LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 
 require 'async'
 require 'async/io/stream'
 require 'async/http/endpoint'
 require 'protocol/http1/connection'
-require 'pry'
 
 Async do
-	endpoint = Async::HTTP::Endpoint.parse("https://www.google.com/search?q=kittens", alpn_protocols: ["http/1.1"])
+	endpoint = Async::HTTP::Endpoint.parse("http://localhost:8080")
 	
 	peer = endpoint.connect
 	
@@ -23,13 +23,17 @@ Async do
 	client = Protocol::HTTP1::Connection.new(stream)
 	
 	puts "Writing request..."
-	client.write_request("www.google.com", "GET", "/search?q=kittens", "HTTP/1.1", [["Accept", "*/*"]])
-	client.write_body("HTTP/1.1", nil)
+	3.times do
+		client.write_request("localhost", "GET", "/", "HTTP/1.1", [["Accept", "*/*"]])
+		client.write_body("HTTP/1.1", nil)
 	
-	puts "Reading response..."
-	response = client.read_response("GET")
-	
-	puts "Got response: #{response.inspect}"
+		puts "Reading response..."
+		response = client.read_response("GET")
+		version, status, reason, headers, body = response
+		
+		puts "Got response: #{response.inspect}"
+		puts body&.read
+	end
 	
 	puts "Closing client..."
 	client.close
