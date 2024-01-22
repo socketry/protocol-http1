@@ -37,12 +37,11 @@ describe Protocol::HTTP1::Body::Remainder do
 	
 	with "#read" do
 		it "retrieves chunks of content" do
+			expect(body).not.to be(:empty?)
+			
 			expect(body.read).to be == "Hello World"
 			expect(body.read).to be == nil
-		end
-		
-		it "updates number of bytes retrieved" do
-			body.read
+			
 			expect(body).to be(:empty?)
 		end
 	end
@@ -57,12 +56,11 @@ describe Protocol::HTTP1::Body::Remainder do
 	
 	with "#join" do
 		it "returns all content" do
+			expect(body).not.to be(:empty?)
+			
 			expect(body.join).to be == "Hello World"
 			expect(body.join).to be == ""
-		end
-		
-		it "updates number of bytes retrieved" do
-			body.read
+			
 			expect(body).to be(:empty?)
 		end
 	end

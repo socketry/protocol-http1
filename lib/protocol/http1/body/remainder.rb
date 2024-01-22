@@ -14,15 +14,17 @@ module Protocol
 				# block_size may be removed in the future. It is better managed by stream.
 				def initialize(stream)
 					@stream = stream
+					@empty = false
 				end
 				
 				def empty?
-					@stream.eof? or @stream.closed?
+					@empty or @stream.closed?
 				end
 				
 				def close(error = nil)
 					# We can't really do anything in this case except close the connection.
 					@stream.close
+					@empty = true
 					
 					super
 				end
@@ -31,6 +33,8 @@ module Protocol
 				def read
 					@stream.readpartial(BLOCK_SIZE)
 				rescue EOFError, IOError
+					@empty = true
+					
 					# I noticed that in some cases you will get EOFError, and in other cases IOError!?
 					return nil
 				end
@@ -45,6 +49,8 @@ module Protocol
 				
 				def join
 					@stream.read
+				ensure
+					@empty = true
 				end
 				
 				def inspect
