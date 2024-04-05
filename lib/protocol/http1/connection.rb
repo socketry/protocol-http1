@@ -53,7 +53,6 @@ module Protocol
 				@stream = stream
 				
 				@persistent = persistent
-				@hijacked = false
 				
 				@count = 0
 			end
@@ -110,14 +109,13 @@ module Protocol
 			# IO has been handed over and is not usable anymore.
 			# @return [Boolean] hijack status
 			def hijacked?
-				@hijacked
+				@stream.nil?
 			end
 			
 			# Effectively close the connection and return the underlying IO.
 			# @return [IO] the underlying non-blocking IO.
 			def hijack!
 				@persistent = false
-				@hijacked = true
 				stream = @stream
 				
 				@stream.flush
