@@ -5,6 +5,7 @@
 # Copyright, 2019, by Brian Morearty.
 # Copyright, 2020, by Bruno Sutic.
 # Copyright, 2023, by Thomas Morgan.
+# Copyright, 2024, by Anton Zhuravsky.
 
 require 'protocol/http/headers'
 

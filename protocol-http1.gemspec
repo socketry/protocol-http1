@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
 	spec.version = Protocol::HTTP1::VERSION
 	
 	spec.summary = "A low level implementation of the HTTP/1 protocol."
-	spec.authors = ["Samuel Williams", "Thomas Morgan", "Brian Morearty", "Bruno Sutic", "Olle Jonsson"]
+	spec.authors = ["Samuel Williams", "Thomas Morgan", "Anton Zhuravsky", "Brian Morearty", "Bruno Sutic", "Olle Jonsson"]
 	spec.license = "MIT"
 	
 	spec.cert_chain  = ['release.cert']
