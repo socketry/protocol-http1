@@ -19,11 +19,17 @@ describe Protocol::HTTP1::Connection do
 			server_wrapper = server.hijack!
 			expect(server.persistent).to be == false
 		end
+
+		it "should repord itself as #hijacked? after the hijack" do
+			expect(server.hijacked?).to be == false
+			server.hijack!
+			expect(server.hijacked?).to be == true
+		end
 		
 		it "should use non-chunked output" do
 			expect(body).to receive(:ready?).and_return(false)
 			expect(body).to receive(:empty?).and_return(false)
-			expect(body).to receive(:length).and_return(nil)
+			expect(body).to receive(:length).twice.and_return(nil)
 			expect(body).to receive(:each).and_return(nil)
 			
 			expect(server).to receive(:write_body_and_close)
