@@ -25,7 +25,12 @@ Addrinfo.tcp("0.0.0.0", 8080).listen do |server|
 			connection.write_response(version, 200, [["Content-Type", "text/plain"]])
 			connection.write_body(version, Protocol::HTTP::Body::Buffered.wrap(["Hello World"]))
 			
+			# Simulate random disconnects:
+			break if rand < 0.5
+			
 			break unless connection.persistent
 		end
+	ensure
+		client&.close
 	end
 end
