@@ -379,6 +379,7 @@ module Protocol
 					end
 				end
 				
+				@stream.flush
 				@stream.close_write
 			end
 			
