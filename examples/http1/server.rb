@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2023, by Samuel Williams.
+# Copyright, 2023-2024, by Samuel Williams.
 
 $LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 
@@ -19,10 +19,10 @@ Addrinfo.tcp("0.0.0.0", 8080).listen do |server|
 		
 		# Read request:
 		while request = connection.read_request
-			headers, method, path, version, headers, body = request
+			authority, method, path, version, headers, body = request
 			
 			# Write response:
-			connection.write_response(version, 200, [["Content-Type", "text/plain"]])
+			connection.write_response(version, 200, [["content-type", "text/plain"]])
 			connection.write_body(version, Protocol::HTTP::Body::Buffered.wrap(["Hello World"]))
 			
 			break unless connection.persistent

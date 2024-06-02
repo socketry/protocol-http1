@@ -2,12 +2,11 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2023, by Samuel Williams.
+# Copyright, 2019-2024, by Samuel Williams.
 
 $LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 
 require 'async'
-require 'async/io/stream'
 require 'async/http/endpoint'
 require 'protocol/http1/connection'
 
@@ -19,8 +18,7 @@ Async do
 	puts "Connected to #{peer} #{peer.remote_address.inspect}"
 	
 	# IO Buffering...
-	stream = Async::IO::Stream.new(peer)
-	client = Protocol::HTTP1::Connection.new(stream)
+	client = Protocol::HTTP1::Connection.new(peer)
 	
 	puts "Writing request..."
 	3.times do
