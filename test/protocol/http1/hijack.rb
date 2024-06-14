@@ -44,7 +44,7 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == response_version
 			expect(status).to be == 101
 			expect(headers).to be == response_headers
-			expect(body).to be_nil # due to 101 status
+			expect(body).to be_a(::Protocol::HTTP1::Body::Remainder) # due to 101 status
 			
 			client_stream = client.hijack!
 			

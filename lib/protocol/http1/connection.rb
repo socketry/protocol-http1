@@ -423,6 +423,7 @@ module Protocol
 			end
 			
 			def read_remainder_body
+				@persistent = false
 				Body::Remainder.new(@stream)
 			end
 			
@@ -469,7 +470,14 @@ module Protocol
 					return nil
 				end
 				
-				if (status >= 100 and status < 200) or status == 204 or status == 304
+				if status >= 100 and status < 200
+					# At the moment this is returned, the Remainder represents any
+					# future response on the stream. The Remainder may be used directly
+					# or discarded, or read_response may be called again.
+					return read_remainder_body
+				end
+				
+				if status == 204 or status == 304
 					return nil
 				end
 				
