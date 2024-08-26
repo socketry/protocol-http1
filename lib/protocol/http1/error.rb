@@ -10,21 +10,20 @@ module Protocol
 		class Error < HTTP::Error
 		end
 		
-		class InvalidRequest < Error
+		# The request was not able to be parsed correctly, or failed some kind of validation.
+		class BadRequest < Error
+		end
+		
+		# A header name or value was invalid, e.g. contains invalid characters.
+		class BadHeader < BadRequest
+		end
+		
+		# Indicates that the request is invalid for some reason, e.g. syntax error, invalid headers, etc.
+		class InvalidRequest < BadRequest
 		end
 		
 		# The specified content length and the given content's length do not match.
 		class ContentLengthError < Error
-		end
-		
-		# The request was parsed correctly, but was invalid for some other reason.
-		class BadRequest < Error
-		end
-		
-		class BadHeader < Error
-		end
-		
-		class BadResponse < Error
 		end
 	end
 end
