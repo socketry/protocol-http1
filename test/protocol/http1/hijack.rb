@@ -45,7 +45,7 @@ describe Protocol::HTTP1::Connection do
 			expect(headers).to have_keys(
 				'upgrade' => be == ['websocket'],
 			)
-			expect(body).to be_nil # due to 101 status
+			expect(body).to be_a(::Protocol::HTTP1::Body::Remainder) # due to 101 status
 			
 			client_stream = client.hijack!
 			
