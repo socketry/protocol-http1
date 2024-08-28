@@ -24,7 +24,7 @@ describe Protocol::HTTP1::Connection do
 			
 			expect(version).to be == request_version
 			expect(headers['upgrade']).to be == [protocol]
-			expect(body).to be_nil
+			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
 			
 			stream = server.hijack!
 			expect(stream.read).to be == "Hello World"

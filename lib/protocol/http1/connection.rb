@@ -503,6 +503,11 @@ module Protocol
 					return read_tunnel_body
 				end
 				
+				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields.
+				if headers[UPGRADE]
+					return read_tunnel_body
+				end
+				
 				# 6.  If this is a request message and none of the above are true, then
 				# the message body length is zero (no message body is present).
 				return read_body(headers)
