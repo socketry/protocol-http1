@@ -45,7 +45,7 @@ module Protocol
 					length, _extensions = read_line.split(";", 2)
 					
 					unless length =~ VALID_CHUNK_LENGTH
-						raise BadRequest, "Invalid chunk length: #{length.dump}"
+						raise BadRequest, "Invalid chunk length: #{length.inspect}"
 					end
 					
 					# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
@@ -93,7 +93,7 @@ module Protocol
 						if match = line.match(HEADER)
 							@headers.add(match[1], match[2])
 						else
-							raise BadHeader, "Could not parse header: #{line.dump}"
+							raise BadHeader, "Could not parse header: #{line.inspect}"
 						end
 					end
 				end

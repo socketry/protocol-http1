@@ -240,7 +240,7 @@ module Protocol
 					if match = line.match(HEADER)
 						fields << [match[1], match[2]]
 					else
-						raise BadHeader, "Could not parse header: #{line.dump}"
+						raise BadHeader, "Could not parse header: #{line.inspect}"
 					end
 				end
 				
@@ -445,7 +445,7 @@ module Protocol
 					if content_length =~ VALID_CONTENT_LENGTH
 						yield Integer(content_length, 10)
 					else
-						raise BadRequest, "Invalid content length: #{content_length.dump}"
+						raise BadRequest, "Invalid content length: #{content_length.inspect}"
 					end
 				end
 			end
