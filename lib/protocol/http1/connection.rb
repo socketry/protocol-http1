@@ -435,6 +435,12 @@ module Protocol
 				read_remainder_body
 			end
 			
+			def read_upgrade_body
+				# When you have an incoming upgrade request body, we must be extremely careful not to start reading it until the upgrade has been confirmed, otherwise if the upgrade was rejected and we started forwarding the incoming request body, it would desynchronize the connection (potential security issue).
+				# We mitigate this issue by setting @persistent to false, which will prevent the connection from being reused, even if the upgrade fails (potential performance issue).
+				read_remainder_body
+			end
+			
 			HEAD = "HEAD"
 			CONNECT = "CONNECT"
 			
@@ -470,14 +476,11 @@ module Protocol
 					return nil
 				end
 				
-				if status >= 100 and status < 200
-					# At the moment this is returned, the Remainder represents any
-					# future response on the stream. The Remainder may be used directly
-					# or discarded, or read_response may be called again.
-					return read_remainder_body
+				if status == 101
+					return read_upgrade_body
 				end
 				
-				if status == 204 or status == 304
+				if (status >= 100 and status < 200) or status == 204 or status == 304
 					return nil
 				end
 				
@@ -501,6 +504,11 @@ module Protocol
 				# such a message.
 				if method == HTTP::Methods::CONNECT
 					return read_tunnel_body
+				end
+				
+				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields.
+				if headers[UPGRADE]
+					return read_upgrade_body
 				end
 				
 				# 6.  If this is a request message and none of the above are true, then

@@ -205,8 +205,8 @@ describe Protocol::HTTP1::Connection do
 		with "GET" do
 			it "should ignore body for informational responses" do
 				body = client.read_response_body("GET", 100, {'content-length' => '10'})
-				expect(body).to be_a(::Protocol::HTTP1::Body::Remainder)
-				expect(client.persistent).to be == false
+				expect(body).to be_nil
+				expect(client.persistent).to be == true
 			end
 			
 			it "should ignore body for no content responses" do
