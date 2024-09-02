@@ -105,7 +105,7 @@ module Protocol
 			def write_upgrade_header(upgrade)
 				@stream.write("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
 			end
-
+			
 			# Indicates whether the connection has been hijacked meaning its
 			# IO has been handed over and is not usable anymore.
 			# @return [Boolean] hijack status
