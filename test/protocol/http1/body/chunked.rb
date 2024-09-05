@@ -25,14 +25,20 @@ describe Protocol::HTTP1::Body::Chunked do
 		end
 	end
 	
-	with "#stop" do
-		it "closes the stream" do
-			body.close(EOFError)
-			expect(buffer).to be(:closed?)
+	with "#close" do
+		it "invokes close_read on the stream if closing without reading all chunks" do
+			expect(buffer).to receive(:close_read)
+			
+			body.close
+			
+			expect(body).to be(:empty?)
 		end
 		
-		it "marks body as finished" do
+		it "invokes close_read on the stream if closing with an error" do
+			expect(buffer).to receive(:close_read)
+			
 			body.close(EOFError)
+			
 			expect(body).to be(:empty?)
 		end
 	end

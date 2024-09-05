@@ -75,12 +75,17 @@ describe Protocol::HTTP1::Body::Fixed do
 	with "#join" do
 		it "returns all content" do
 			expect(body.join).to be == "Hello World"
-			expect(body.join).to be == ""
 		end
 		
 		it "updates number of bytes retrieved" do
-			body.read
+			chunk = body.read
+			
 			expect(body).to be(:empty?)
+			
+			expect(body).to have_attributes(
+				length: be == chunk.bytesize,
+				remaining: be == 0
+			)
 		end
 	end
 end

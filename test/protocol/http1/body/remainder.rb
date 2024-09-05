@@ -59,7 +59,6 @@ describe Protocol::HTTP1::Body::Remainder do
 			expect(body).not.to be(:empty?)
 			
 			expect(body.join).to be == "Hello World"
-			expect(body.join).to be == ""
 			
 			expect(body).to be(:empty?)
 		end

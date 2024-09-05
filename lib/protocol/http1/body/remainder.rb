@@ -14,47 +14,32 @@ module Protocol
 				# block_size may be removed in the future. It is better managed by stream.
 				def initialize(stream)
 					@stream = stream
-					@empty = false
 				end
 				
 				def empty?
-					@empty or @stream.closed?
+					@stream.nil?
 				end
 				
 				def close(error = nil)
-					# We can't really do anything in this case except close the connection.
-					@stream.close
-					@empty = true
+					if @stream
+						@stream.close_read
+						# We can't really do anything in this case except close the connection.
+						@stream = nil
+					end
 					
 					super
 				end
 				
-				# TODO this is a bit less efficient in order to maintain compatibility with `IO`.
 				def read
-					@stream.readpartial(BLOCK_SIZE)
+					@stream&.readpartial(BLOCK_SIZE)
 				rescue EOFError, IOError
-					@empty = true
-					
+					@stream = nil
 					# I noticed that in some cases you will get EOFError, and in other cases IOError!?
 					return nil
 				end
 				
-				def call(stream)
-					self.each do |chunk|
-						stream.write(chunk)
-					end
-					
-					stream.flush
-				end
-				
-				def join
-					@stream.read
-				ensure
-					@empty = true
-				end
-				
 				def inspect
-					"\#<#{self.class} #{@stream.closed? ? 'closed' : 'open'}>"
+					"\#<#{self.class} state=#{@stream ? 'open' : 'closed'}>"
 				end
 			end
 		end

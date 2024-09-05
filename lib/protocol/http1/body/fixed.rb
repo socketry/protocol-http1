@@ -19,13 +19,17 @@ module Protocol
 				attr :remaining
 				
 				def empty?
-					@remaining == 0
+					@stream.nil? or @remaining == 0
 				end
 				
 				def close(error = nil)
-					# If we are closing the body without fully reading it, the underlying connection is now in an undefined state.
-					if @remaining != 0
-						@stream.close
+					if @stream
+						# If we are closing the body without fully reading it, the underlying connection is now in an undefined state.
+						if @remaining != 0
+							@stream.close_read
+						end
+						
+						@stream = nil
 					end
 					
 					super
@@ -34,25 +38,21 @@ module Protocol
 				# @raises EOFError if the stream is closed before the expected length is read.
 				def read
 					if @remaining > 0
-						# `readpartial` will raise `EOFError` if the stream is closed/finished:
-						if chunk = @stream.readpartial(@remaining)
-							@remaining -= chunk.bytesize
-							
-							return chunk
+						if @stream
+							# `readpartial` will raise `EOFError` if the stream is closed/finished:
+							if chunk = @stream.readpartial(@remaining)
+								@remaining -= chunk.bytesize
+								
+								return chunk
+							end
 						end
+						
+						raise EOFError, "Stream closed before expected length was read!"
 					end
 				end
 				
-				def join
-					buffer = @stream.read(@remaining)
-					
-					@remaining = 0
-					
-					return buffer
-				end
-				
 				def inspect
-					"\#<#{self.class} length=#{@length} remaining=#{@remaining}>"
+					"\#<#{self.class} length=#{@length} remaining=#{@remaining} state=#{@stream ? 'open' : 'closed'}>"
 				end
 			end
 		end

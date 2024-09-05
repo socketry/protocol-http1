@@ -23,14 +23,17 @@ module Protocol
 				end
 				
 				def empty?
-					@finished
+					@stream.nil?
 				end
 				
 				def close(error = nil)
-					# We only close the connection if we haven't completed reading the entire body:
-					unless @finished
-						@stream.close
-						@finished = true
+					if @stream
+						# We only close the connection if we haven't completed reading the entire body:
+						unless @finished
+							@stream.close_read
+						end
+						
+						@stream = nil
 					end
 					
 					super
@@ -40,35 +43,40 @@ module Protocol
 				
 				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
 				def read
-					return nil if @finished
-					
-					length, _extensions = read_line.split(";", 2)
-					
-					unless length =~ VALID_CHUNK_LENGTH
-						raise BadRequest, "Invalid chunk length: #{length.inspect}"
-					end
-					
-					# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
-					length = Integer(length, 16)
-					
-					if length == 0
-						@finished = true
+					if !@finished
+						if @stream
+							length, _extensions = read_line.split(";", 2)
+							
+							unless length =~ VALID_CHUNK_LENGTH
+								raise BadRequest, "Invalid chunk length: #{length.inspect}"
+							end
+							
+							# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
+							length = Integer(length, 16)
+							
+							if length == 0
+								read_trailer
+								
+								@stream = nil
+								@finished = true
+								
+								return nil
+							end
+							
+							# Read trailing CRLF:
+							chunk = @stream.read(length + 2)
+							
+							# ...and chomp it off:
+							chunk.chomp!(CRLF)
+							
+							@length += length
+							@count += 1
+							
+							return chunk
+						end
 						
-						read_trailer
-						
-						return nil
+						raise EOFError, "Stream closed before expected length was read!"
 					end
-					
-					# Read trailing CRLF:
-					chunk = @stream.read(length + 2)
-					
-					# ...and chomp it off:
-					chunk.chomp!(CRLF)
-					
-					@length += length
-					@count += 1
-					
-					return chunk
 				end
 				
 				def inspect
