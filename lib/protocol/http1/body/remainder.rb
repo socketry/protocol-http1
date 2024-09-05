@@ -8,6 +8,7 @@ require 'protocol/http/body/readable'
 module Protocol
 	module HTTP1
 		module Body
+			# A body that reads all remaining data from the stream.
 			class Remainder < HTTP::Body::Readable
 				BLOCK_SIZE = 1024 * 64
 				
@@ -22,8 +23,8 @@ module Protocol
 				
 				def close(error = nil)
 					if @stream
-						@stream.close_read
 						# We can't really do anything in this case except close the connection.
+						@stream.close_read
 						@stream = nil
 					end
 					

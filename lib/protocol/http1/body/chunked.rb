@@ -57,6 +57,7 @@ module Protocol
 							if length == 0
 								read_trailer
 								
+								# The final chunk has been read and the stream is now closed:
 								@stream = nil
 								@finished = true
 								
@@ -75,6 +76,7 @@ module Protocol
 							return chunk
 						end
 						
+						# If the stream has been closed before we have read the final chunk, raise an error:
 						raise EOFError, "Stream closed before expected length was read!"
 					end
 				end

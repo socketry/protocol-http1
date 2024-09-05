@@ -11,6 +11,7 @@ module Protocol
 			class Fixed < HTTP::Body::Readable
 				def initialize(stream, length)
 					@stream = stream
+					
 					@length = length
 					@remaining = length
 				end
@@ -39,7 +40,7 @@ module Protocol
 				def read
 					if @remaining > 0
 						if @stream
-							# `readpartial` will raise `EOFError` if the stream is closed/finished:
+							# `readpartial` will raise `EOFError` if the stream is finished, or `IOError` if the stream is closed.
 							if chunk = @stream.readpartial(@remaining)
 								@remaining -= chunk.bytesize
 								
@@ -47,6 +48,7 @@ module Protocol
 							end
 						end
 						
+						# If the stream has been closed before we have read the expected length, raise an error:
 						raise EOFError, "Stream closed before expected length was read!"
 					end
 				end
