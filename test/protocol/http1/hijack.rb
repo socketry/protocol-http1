@@ -3,6 +3,7 @@
 # Released under the MIT License.
 # Copyright, 2019-2024, by Samuel Williams.
 # Copyright, 2024, by Anton Zhuravsky.
+# Copyright, 2024, by Thomas Morgan.
 
 require 'protocol/http1/connection'
 require 'connection_context'
