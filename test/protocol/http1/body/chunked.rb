@@ -82,5 +82,13 @@ describe Protocol::HTTP1::Body::Chunked do
 				expect{body.read}.to raise_exception(Protocol::HTTP1::BadHeader)
 			end
 		end
+		
+		with "invalid content length" do
+			let(:buffer) {StringIO.new("#{(content.bytesize + 1).to_s(16)}\r\n#{content}")}
+			
+			it "raises error" do
+				expect{body.read}.to raise_exception(EOFError)
+			end
+		end
 	end
 end

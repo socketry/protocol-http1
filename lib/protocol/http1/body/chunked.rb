@@ -26,15 +26,19 @@ module Protocol
 					@stream.nil?
 				end
 				
-				def close(error = nil)
-					if @stream
+				def discard
+					if stream = @stream
+						@stream = nil
+						
 						# We only close the connection if we haven't completed reading the entire body:
 						unless @finished
-							@stream.close_read
+							stream.close_read
 						end
-						
-						@stream = nil
 					end
+				end
+				
+				def close(error = nil)
+					self.discard
 					
 					super
 				end
@@ -67,13 +71,18 @@ module Protocol
 							# Read trailing CRLF:
 							chunk = @stream.read(length + 2)
 							
-							# ...and chomp it off:
-							chunk.chomp!(CRLF)
-							
-							@length += length
-							@count += 1
-							
-							return chunk
+							if chunk.bytesize == length + 2
+								# ...and chomp it off:
+								chunk.chomp!(CRLF)
+								
+								@length += length
+								@count += 1
+								
+								return chunk
+							else
+								# The stream has been closed before we have read the requested length:
+								self.discard
+							end
 						end
 						
 						# If the stream has been closed before we have read the final chunk, raise an error:

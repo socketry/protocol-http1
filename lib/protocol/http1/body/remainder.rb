@@ -21,12 +21,15 @@ module Protocol
 					@stream.nil?
 				end
 				
-				def close(error = nil)
-					if @stream
-						# We can't really do anything in this case except close the connection.
-						@stream.close_read
+				def discard
+					if stream = @stream
 						@stream = nil
+						stream.close_read
 					end
+				end
+				
+				def close(error = nil)
+					self.discard
 					
 					super
 				end

@@ -64,8 +64,9 @@ describe Protocol::HTTP1::Body::Fixed do
 			let(:body) {subject.new(buffer, 20)}
 			
 			it "retrieves content up to provided length" do
+				body.read
+				
 				expect do
-					body.read
 					body.read
 				end.to raise_exception(EOFError)
 			end
@@ -86,6 +87,16 @@ describe Protocol::HTTP1::Body::Fixed do
 				length: be == chunk.bytesize,
 				remaining: be == 0
 			)
+		end
+	end
+	
+	with "#discard" do
+		it "causes #read to raise EOFError" do
+			body.discard
+			
+			expect do
+				body.read
+			end.to raise_exception(EOFError)
 		end
 	end
 end

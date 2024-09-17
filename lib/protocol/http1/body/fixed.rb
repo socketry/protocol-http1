@@ -23,15 +23,18 @@ module Protocol
 					@stream.nil? or @remaining == 0
 				end
 				
-				def close(error = nil)
-					if @stream
-						# If we are closing the body without fully reading it, the underlying connection is now in an undefined state.
-						if @remaining != 0
-							@stream.close_read
-						end
-						
+				def discard
+					if stream = @stream
 						@stream = nil
+						
+						if @remaining != 0
+							stream.close_read
+						end
 					end
+				end
+				
+				def close(error = nil)
+					self.discard
 					
 					super
 				end
@@ -41,11 +44,11 @@ module Protocol
 					if @remaining > 0
 						if @stream
 							# `readpartial` will raise `EOFError` if the stream is finished, or `IOError` if the stream is closed.
-							if chunk = @stream.readpartial(@remaining)
-								@remaining -= chunk.bytesize
-								
-								return chunk
-							end
+							chunk = @stream.readpartial(@remaining)
+							
+							@remaining -= chunk.bytesize
+							
+							return chunk
 						end
 						
 						# If the stream has been closed before we have read the expected length, raise an error:
