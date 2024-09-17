@@ -5,13 +5,13 @@
 # Copyright, 2024, by Anton Zhuravsky.
 # Copyright, 2024, by Thomas Morgan.
 
-require 'protocol/http1/connection'
-require 'connection_context'
+require "protocol/http1/connection"
+require "connection_context"
 
 describe Protocol::HTTP1::Connection do
 	include_context ConnectionContext
 	
-	with '#hijack' do
+	with "#hijack" do
 		let(:response_version) {Protocol::HTTP1::Connection::HTTP10}
 		let(:body) {Protocol::HTTP::Body::Buffered.new}
 		let(:text) {"Hello World!"}
@@ -34,7 +34,7 @@ describe Protocol::HTTP1::Connection do
 			expect(body).to receive(:each).and_return(nil)
 			
 			expect(server).to receive(:write_body_and_close)
-			server.write_response(response_version, 101, {'upgrade' => 'websocket'})
+			server.write_response(response_version, 101, {"upgrade" => "websocket"})
 			server.write_body(response_version, body)
 			
 			server_stream = server.hijack!
@@ -44,7 +44,7 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == response_version
 			expect(status).to be == 101
 			expect(headers).to have_keys(
-				'upgrade' => be == ['websocket'],
+				"upgrade" => be == ["websocket"],
 			)
 			expect(body).to be_a(::Protocol::HTTP1::Body::Remainder) # due to 101 status
 			

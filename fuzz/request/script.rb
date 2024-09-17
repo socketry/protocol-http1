@@ -2,10 +2,10 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2020-2022, by Samuel Williams.
+# Copyright, 2020-2024, by Samuel Williams.
 
-require 'socket'
-require_relative '../../lib/protocol/http1'
+require "socket"
+require_relative "../../lib/protocol/http1"
 
 def test
 	# input, output = Socket.pair(Socket::PF_UNIX, Socket::SOCK_STREAM)
@@ -25,8 +25,8 @@ def test
 end
 
 if ENV["_"] =~ /afl/
-	require 'kisaten'
-	Kisaten.crash_at [], [], Signal.list['USR1']
+	require "kisaten"
+	Kisaten.crash_at [], [], Signal.list["USR1"]
 	
 	while Kisaten.loop 10000
 		test

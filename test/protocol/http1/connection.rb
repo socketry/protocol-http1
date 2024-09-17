@@ -6,15 +6,15 @@
 # Copyright, 2020, by Bruno Sutic.
 # Copyright, 2024, by Thomas Morgan.
 
-require 'protocol/http1/connection'
-require 'protocol/http/body/buffered'
+require "protocol/http1/connection"
+require "protocol/http/body/buffered"
 
-require 'connection_context'
+require "connection_context"
 
 describe Protocol::HTTP1::Connection do
 	include_context ConnectionContext
 	
-	with '#read_request' do
+	with "#read_request" do
 		it "reads request without body" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
 			client.stream.close
@@ -23,10 +23,10 @@ describe Protocol::HTTP1::Connection do
 			
 			authority, method, target, version, headers, body = server.read_request
 			
-			expect(authority).to be == 'localhost'
-			expect(method).to be == 'GET'
-			expect(target).to be == '/'
-			expect(version).to be == 'HTTP/1.1'
+			expect(authority).to be == "localhost"
+			expect(method).to be == "GET"
+			expect(target).to be == "/"
+			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body).to be_nil
 		end
@@ -37,11 +37,11 @@ describe Protocol::HTTP1::Connection do
 			
 			authority, method, target, version, headers, body = server.read_request
 			
-			expect(authority).to be == 'localhost'
-			expect(method).to be == 'GET'
-			expect(target).to be == '/'
-			expect(version).to be == 'HTTP/1.1'
-			expect(headers).to be == {'accept' => ['*/*'], 'header-0' => ["value 1"]}
+			expect(authority).to be == "localhost"
+			expect(method).to be == "GET"
+			expect(target).to be == "/"
+			expect(version).to be == "HTTP/1.1"
+			expect(headers).to be == {"accept" => ["*/*"], "header-0" => ["value 1"]}
 			expect(body).to be_nil
 		end
 		
@@ -51,10 +51,10 @@ describe Protocol::HTTP1::Connection do
 			
 			authority, method, target, version, headers, body = server.read_request
 			
-			expect(authority).to be == 'localhost'
-			expect(method).to be == 'GET'
-			expect(target).to be == '/'
-			expect(version).to be == 'HTTP/1.1'
+			expect(authority).to be == "localhost"
+			expect(method).to be == "GET"
+			expect(target).to be == "/"
+			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body.join).to be == "Hello World"
 		end
@@ -65,10 +65,10 @@ describe Protocol::HTTP1::Connection do
 			
 			authority, method, target, version, headers, body = server.read_request
 			
-			expect(authority).to be == 'localhost'
-			expect(method).to be == 'GET'
-			expect(target).to be == '/'
-			expect(version).to be == 'HTTP/1.1'
+			expect(authority).to be == "localhost"
+			expect(method).to be == "GET"
+			expect(target).to be == "/"
+			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body.join).to be == "Hello World"
 			expect(server).to be(:persistent?, version, method, headers)
@@ -80,10 +80,10 @@ describe Protocol::HTTP1::Connection do
 			
 			authority, method, target, version, headers, body = server.read_request
 			
-			expect(authority).to be == 'localhost'
-			expect(method).to be == 'CONNECT'
-			expect(target).to be == 'localhost:443'
-			expect(version).to be == 'HTTP/1.1'
+			expect(authority).to be == "localhost"
+			expect(method).to be == "CONNECT"
+			expect(target).to be == "localhost:443"
+			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
 			expect(server).not.to be(:persistent?, version, method, headers)
@@ -108,13 +108,13 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_response' do
+	with "#write_response" do
 		it "fails to write a response with invalid header name" do
 			invalid_header_names = [
-				'foo bar',
-				'foo:bar',
-				'foo: bar',
-				'foo bar:baz',
+				"foo bar",
+				"foo:bar",
+				"foo: bar",
+				"foo bar:baz",
 				'foo\r\nbar',
 				'foo\nbar',
 				'foo\rbar',
@@ -124,14 +124,14 @@ describe Protocol::HTTP1::Connection do
 				expect(name).not.to be =~ Protocol::HTTP1::VALID_FIELD_NAME
 				
 				expect do
-					server.write_response("HTTP/1.1", 200, {name => 'baz'}, [])
+					server.write_response("HTTP/1.1", 200, {name => "baz"}, [])
 				end.to raise_exception(Protocol::HTTP1::BadHeader)
 			end
 		end
 	end
 	
-	with '#write_interim_response' do
-		it 'can write iterm response' do
+	with "#write_interim_response" do
+		it "can write iterm response" do
 			server.write_interim_response("HTTP/1.1", 100, {})
 			server.close
 			
@@ -139,7 +139,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#persistent?' do
+	with "#persistent?" do
 		describe "HTTP 1.0" do
 			it "should not be persistent by default" do
 				expect(server).not.to be(:persistent?, "HTTP/1.0", "GET", {})
@@ -185,7 +185,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#read_response' do
+	with "#read_response" do
 		it "should read successful response" do
 			server.stream.write("HTTP/1.1 200 Hello\r\nContent-Length: 0\r\n\r\n")
 			server.stream.close
@@ -194,7 +194,7 @@ describe Protocol::HTTP1::Connection do
 			
 			version, status, reason, headers, body = client.read_response("GET")
 			
-			expect(version).to be == 'HTTP/1.1'
+			expect(version).to be == "HTTP/1.1"
 			expect(status).to be == 200
 			expect(reason).to be == "Hello"
 			expect(headers).to be == {}
@@ -202,10 +202,10 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#read_response_body' do
+	with "#read_response_body" do
 		with "GET" do
 			it "should ignore body for informational responses" do
-				body = client.read_response_body("GET", 100, {'content-length' => '10'})
+				body = client.read_response_body("GET", 100, {"content-length" => "10"})
 				expect(body).to be_nil
 				expect(client.persistent).to be == true
 			end
@@ -215,21 +215,21 @@ describe Protocol::HTTP1::Connection do
 			end
 			
 			it "should handle non-chunked transfer-encoding" do
-				body = client.read_response_body("GET", 200, {'transfer-encoding' => ['identity']})
+				body = client.read_response_body("GET", 200, {"transfer-encoding" => ["identity"]})
 				expect(body).to be_a(::Protocol::HTTP1::Body::Remainder)
 				expect(client.persistent).to be == false
 			end
 			
 			it "should be an error if both transfer-encoding and content-length is set" do
 				expect do
-					client.read_response_body("GET", 200, {'content-length' => '10', 'transfer-encoding' => ['chunked']})
+					client.read_response_body("GET", 200, {"content-length" => "10", "transfer-encoding" => ["chunked"]})
 				end.to raise_exception(Protocol::HTTP1::BadRequest)
 			end
 		end
 		
 		with "HEAD" do
 			it "can read length of head response" do
-				body = client.read_response_body("HEAD", 200, {'content-length' => '3773'})
+				body = client.read_response_body("HEAD", 200, {"content-length" => "3773"})
 				
 				expect(body).to be_a ::Protocol::HTTP::Body::Head
 				expect(body.length).to be == 3773
@@ -237,14 +237,14 @@ describe Protocol::HTTP1::Connection do
 			end
 			
 			it "ignores zero length body" do
-				body = client.read_response_body("HEAD", 200, {'content-length' => '0'})
+				body = client.read_response_body("HEAD", 200, {"content-length" => "0"})
 				
 				expect(body).to be_nil
 			end
 			
 			it "raises error if content-length is invalid" do
 				expect do
-					client.read_response_body("HEAD", 200, {'content-length' => 'foo'})
+					client.read_response_body("HEAD", 200, {"content-length" => "foo"})
 				end.to raise_exception(Protocol::HTTP1::BadRequest)
 			end
 		end
@@ -256,7 +256,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_chunked_body' do
+	with "#write_chunked_body" do
 		let(:chunks) {["Hello", "World"]}
 		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
 		
@@ -265,7 +265,7 @@ describe Protocol::HTTP1::Connection do
 			server.close
 			
 			headers = client.read_headers
-			expect(headers).to be == [['transfer-encoding', 'chunked']]
+			expect(headers).to be == [["transfer-encoding", "chunked"]]
 			
 			body = client.read_body(headers, false)
 			expect(body.join).to be == chunks.join
@@ -274,17 +274,17 @@ describe Protocol::HTTP1::Connection do
 		it "can generate and read trailer" do
 			chunks = ["Hello", "World"]
 			
-			server.write_headers({'trailer' => 'etag'})
-			server.write_chunked_body(body, false, {'etag' => 'abcd'})
+			server.write_headers({"trailer" => "etag"})
+			server.write_chunked_body(body, false, {"etag" => "abcd"})
 			server.close
 			
 			headers = client.read_headers
-			expect(headers).to be == [['trailer', 'etag'], ['transfer-encoding', 'chunked']]
+			expect(headers).to be == [["trailer", "etag"], ["transfer-encoding", "chunked"]]
 			
 			body = client.read_body(headers, false)
 			expect(body.join).to be == chunks.join
 			
-			expect(headers).to have_keys('etag')
+			expect(headers).to have_keys("etag")
 		end
 		
 		with "HEAD request" do
@@ -301,7 +301,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_fixed_length_body' do
+	with "#write_fixed_length_body" do
 		let(:chunks) {["Hello", "World"]}
 		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
 		
@@ -310,7 +310,7 @@ describe Protocol::HTTP1::Connection do
 			server.close
 			
 			headers = client.read_headers
-			expect(headers).to be == [['content-length', '10']]
+			expect(headers).to be == [["content-length", "10"]]
 			
 			body = client.read_body(headers, false)
 			expect(body.join).to be == chunks.join
@@ -338,7 +338,7 @@ describe Protocol::HTTP1::Connection do
 				server.close
 				
 				headers = client.read_headers
-				expect(headers).to be == [['content-length', '10']]
+				expect(headers).to be == [["content-length", "10"]]
 				
 				body = client.read_response_body("HEAD", 200, headers)
 				expect(body).to be_a(Protocol::HTTP::Body::Head)
@@ -348,7 +348,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_upgrade_body' do
+	with "#write_upgrade_body" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
 		
 		it "can generate and read upgrade response" do
@@ -357,8 +357,8 @@ describe Protocol::HTTP1::Connection do
 			
 			headers = client.read_headers
 			expect(headers).to have_keys(
-				'connection' => be == ['upgrade'],
-				'upgrade' => be == ['text']
+				"connection" => be == ["upgrade"],
+				"upgrade" => be == ["text"]
 			)
 			
 			body = client.read_body(headers, true)
@@ -366,7 +366,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_tunnel_body' do
+	with "#write_tunnel_body" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
 		
 		it "can generate and read tunnel response" do
@@ -375,7 +375,7 @@ describe Protocol::HTTP1::Connection do
 			
 			headers = client.read_headers
 			expect(headers).to have_keys(
-				'connection' => be == ['close'],
+				"connection" => be == ["close"],
 			)
 			
 			body = client.read_body(headers, true)
@@ -383,7 +383,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_body_and_close' do
+	with "#write_body_and_close" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
 		
 		it "can generate and write response" do
@@ -411,7 +411,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with '#write_body' do
+	with "#write_body" do
 		let(:body) {Protocol::HTTP::Body::Buffered.new}
 		
 		it "can write empty body" do
@@ -473,7 +473,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with 'bad requests' do
+	with "bad requests" do
 		it "should fail with negative content length" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: -1\r\n\r\nHello World"
 			client.stream.close
@@ -493,7 +493,7 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
-	with 'bad responses' do
+	with "bad responses" do
 		it 'should fail if headers contain \r characters' do
 			expect do
 				server.write_headers(

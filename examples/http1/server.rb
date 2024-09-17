@@ -6,9 +6,9 @@
 
 $LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 
-require 'socket'
-require 'protocol/http1/connection'
-require 'protocol/http/body/buffered'
+require "socket"
+require "protocol/http1/connection"
+require "protocol/http/body/buffered"
 
 # Test with: curl http://localhost:8080/
 

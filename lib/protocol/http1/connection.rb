@@ -7,31 +7,31 @@
 # Copyright, 2023-2024, by Thomas Morgan.
 # Copyright, 2024, by Anton Zhuravsky.
 
-require 'protocol/http/headers'
+require "protocol/http/headers"
 
-require_relative 'reason'
-require_relative 'error'
+require_relative "reason"
+require_relative "error"
 
-require_relative 'body/chunked'
-require_relative 'body/fixed'
-require_relative 'body/remainder'
-require 'protocol/http/body/head'
+require_relative "body/chunked"
+require_relative "body/fixed"
+require_relative "body/remainder"
+require "protocol/http/body/head"
 
-require 'protocol/http/methods'
+require "protocol/http/methods"
 
 module Protocol
 	module HTTP1
-		CONTENT_LENGTH = 'content-length'
+		CONTENT_LENGTH = "content-length"
 		
-		TRANSFER_ENCODING = 'transfer-encoding'
-		CHUNKED = 'chunked'
+		TRANSFER_ENCODING = "transfer-encoding"
+		CHUNKED = "chunked"
 		
-		CONNECTION = 'connection'
-		CLOSE = 'close'
-		KEEP_ALIVE = 'keep-alive'
+		CONNECTION = "connection"
+		CLOSE = "close"
+		KEEP_ALIVE = "keep-alive"
 		
-		HOST = 'host'
-		UPGRADE = 'upgrade'
+		HOST = "host"
+		UPGRADE = "upgrade"
 		
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze

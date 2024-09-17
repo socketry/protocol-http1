@@ -3,7 +3,7 @@
 # Released under the MIT License.
 # Copyright, 2019-2024, by Samuel Williams.
 
-require 'protocol/http1/body/remainder'
+require "protocol/http1/body/remainder"
 
 describe Protocol::HTTP1::Body::Remainder do
 	let(:content) {"Hello World"}

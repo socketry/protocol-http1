@@ -3,7 +3,7 @@
 # Released under the MIT License.
 # Copyright, 2019-2024, by Samuel Williams.
 
-require 'protocol/http/body/readable'
+require "protocol/http/body/readable"
 
 module Protocol
 	module HTTP1

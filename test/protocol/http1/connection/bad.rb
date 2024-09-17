@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2023, by Samuel Williams.
+# Copyright, 2023-2024, by Samuel Williams.
 
-require 'protocol/http1/connection'
-require 'connection_context'
+require "protocol/http1/connection"
+require "connection_context"
 
 describe Protocol::HTTP1::Connection do
 	include_context ConnectionContext

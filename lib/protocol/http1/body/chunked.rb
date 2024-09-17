@@ -4,7 +4,7 @@
 # Copyright, 2019-2024, by Samuel Williams.
 # Copyright, 2023, by Thomas Morgan.
 
-require 'protocol/http/body/readable'
+require "protocol/http/body/readable"
 
 module Protocol
 	module HTTP1

@@ -3,8 +3,8 @@
 # Released under the MIT License.
 # Copyright, 2019-2024, by Samuel Williams.
 
-require 'protocol/http1/body/chunked'
-require 'connection_context'
+require "protocol/http1/body/chunked"
+require "connection_context"
 
 describe Protocol::HTTP1::Body::Chunked do
 	let(:content) {"Hello World"}
@@ -60,13 +60,13 @@ describe Protocol::HTTP1::Body::Chunked do
 			let(:postfix) {"ETag: abcd\r\n"}
 			
 			it "can read trailing etag" do
-				headers.add('trailer', 'etag')
+				headers.add("trailer", "etag")
 				
 				expect(body.read).to be == "Hello World"
-				expect(headers['etag']).to be_nil
+				expect(headers["etag"]).to be_nil
 				
 				expect(body.read).to be == nil
-				expect(headers['etag']).to be == 'abcd'
+				expect(headers["etag"]).to be == "abcd"
 			end
 		end
 		
@@ -74,10 +74,10 @@ describe Protocol::HTTP1::Body::Chunked do
 			let(:postfix) {":ETag abcd\r\n"}
 			
 			it "raises error" do
-				headers.add('trailer', 'etag')
+				headers.add("trailer", "etag")
 				
 				expect(body.read).to be == "Hello World"
-				expect(headers['etag']).to be_nil
+				expect(headers["etag"]).to be_nil
 				
 				expect{body.read}.to raise_exception(Protocol::HTTP1::BadHeader)
 			end

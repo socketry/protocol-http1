@@ -6,9 +6,9 @@
 
 $LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 
-require 'async'
-require 'async/http/endpoint'
-require 'protocol/http1/connection'
+require "async"
+require "async/http/endpoint"
+require "protocol/http1/connection"
 
 Async do
 	endpoint = Async::HTTP::Endpoint.parse("http://localhost:8080")
