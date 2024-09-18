@@ -547,4 +547,25 @@ describe Protocol::HTTP1::Connection do
 			end.to raise_exception(Protocol::HTTP1::BadHeader)
 		end
 	end
+	
+	with "persistent connection" do
+		it "returns back to idle state" do
+			expect(client).to be(:idle?)
+			
+			client.write_request("localhost", "GET", "/", "HTTP/1.1", {})
+			expect(client).to be(:open?)
+			client.write_body("HTTP/1.1", nil)
+			
+			expect(client).to be(:half_closed_local?)
+			
+			expect(server).to be(:idle?)
+			
+			request = server.read_request
+			expect(request).to be == ["localhost", "GET", "/", "HTTP/1.1", {}, nil]
+			expect(server).to be(:open?)
+			
+			server.write_response("HTTP/1.1", 200, {}, [])
+			expect(server).to be(:idle?)
+			
+	end
 end

@@ -109,6 +109,26 @@ module Protocol
 			# State transition methods use a trailing "!".
 			attr_accessor :state
 			
+			def idle?
+				@state == :idle
+			end
+			
+			def open?
+				@state == :open
+			end
+			
+			def half_closed_local?
+				@state == :half_closed_local
+			end
+			
+			def half_closed_remote?
+				@state == :half_closed_remote
+			end
+			
+			def closed?
+				@state == :closed
+			end
+			
 			# The number of requests processed.
 			attr :count
 			
