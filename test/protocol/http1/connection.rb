@@ -562,10 +562,12 @@ describe Protocol::HTTP1::Connection do
 			
 			request = server.read_request
 			expect(request).to be == ["localhost", "GET", "/", "HTTP/1.1", {}, nil]
-			expect(server).to be(:open?)
+			expect(server).to be(:half_closed_remote?)
 			
 			server.write_response("HTTP/1.1", 200, {}, [])
-			expect(server).to be(:idle?)
+			server.write_body("HTTP/1.1", nil)
 			
+			expect(server).to be(:idle?)
+		end
 	end
 end

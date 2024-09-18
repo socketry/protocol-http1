@@ -205,7 +205,7 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				raise ProtocolError, "Cannot write response in #{@state}!" unless @state == :open
+				raise ProtocolError, "Cannot write response in #{@state}!" unless @state == :open or @state == :half_closed_remote
 				
 				# Safari WebSockets break if no reason is given:
 				@stream.write("#{version} #{status} #{reason}\r\n")
@@ -287,6 +287,10 @@ module Protocol
 				@persistent = persistent?(version, method, headers)
 				
 				body = read_request_body(method, headers)
+				
+				if body.nil?
+					self.receive_end_stream!
+				end
 				
 				@count += 1
 				
@@ -489,7 +493,7 @@ module Protocol
 			def closed!
 				raise ProtocolError, "Cannot close in #{@state}!" unless @state == :half_closed_local or @state == :half_closed_remote
 				
-				if self.persistent?
+				if @persistent
 					self.idle!
 				else
 					@state = :closed
