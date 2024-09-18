@@ -8,6 +8,7 @@
 
 require "protocol/http1/connection"
 require "protocol/http/body/buffered"
+require "protocol/http/body/writable"
 
 require "connection_context"
 
@@ -546,5 +547,140 @@ describe Protocol::HTTP1::Connection do
 				)
 			end.to raise_exception(Protocol::HTTP1::BadHeader)
 		end
+	end
+	
+	it "enters half-closed (local) state after writing response body" do
+		expect(client).to be(:idle?)
+		client.write_request("localhost", "GET", "/", "HTTP/1.1", {})
+		expect(client).to be(:open?)
+		body = Protocol::HTTP::Body::Buffered.new(["Hello World"])
+		client.write_body("HTTP/1.1", body)
+		expect(client).to be(:half_closed_local?)
+		
+		expect(server).to be(:idle?)
+		request = server.read_request
+		server.write_response("HTTP/1.1", 200, {}, nil)
+		server.write_body("HTTP/1.1", nil)
+		expect(server).to be(:half_closed_local?)
+	end
+	
+	it "returns back to idle state" do
+		expect(client).to be(:idle?)
+		client.write_request("localhost", "GET", "/", "HTTP/1.1", {})
+		expect(client).to be(:open?)
+		client.write_body("HTTP/1.1", nil)
+		expect(client).to be(:half_closed_local?)
+		
+		expect(server).to be(:idle?)
+		request = server.read_request
+		expect(request).to be == ["localhost", "GET", "/", "HTTP/1.1", {}, nil]
+		expect(server).to be(:half_closed_remote?)
+		
+		server.write_response("HTTP/1.1", 200, {}, [])
+		server.write_body("HTTP/1.1", nil)
+		expect(server).to be(:idle?)
+		
+		response = client.read_response("GET")
+		expect(client).to be(:idle?)
+	end
+	
+	it "transitions to the closed state when using connection: close response body" do
+		expect(client).to be(:idle?)
+		client.write_request("localhost", "GET", "/", "HTTP/1.0", {})
+		expect(client).to be(:open?)
+		
+		client.write_body("HTTP/1.0", nil)
+		expect(client).to be(:half_closed_local?)
+		
+		expect(server).to be(:idle?)
+		request = server.read_request
+		expect(server).to be(:half_closed_remote?)
+		
+		server.write_response("HTTP/1.0", 200, {}, [])
+		
+		# Length is unknown, and HTTP/1.0 does not support chunked encoding, so this will close the connection:
+		body = Protocol::HTTP::Body::Writable.new
+		body.write "Hello World"
+		body.close_write
+		
+		server.write_body("HTTP/1.0", body)
+		expect(server).not.to be(:persistent)
+		expect(server).to be(:closed?)
+		
+		response = client.read_response("GET")
+		body = response.last
+		expect(body.join).to be == "Hello World"
+		expect(client).to be(:closed?)
+	end
+	
+	it "can't write a request in the closed state" do
+		client.state = :closed
+		
+		expect do
+			client.write_request("localhost", "GET", "/", "HTTP/1.0", {})
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't read a response in the closed state" do
+		client.state = :closed
+		
+		expect do
+			client.read_response("GET")
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't write a response in the closed state" do
+		server.state = :closed
+		
+		expect do
+			server.write_response("HTTP/1.0", 200, {}, nil)
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't read a request in the closed state" do
+		server.state = :closed
+		
+		expect do
+			server.read_request
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't enter the closed state from the idle state" do
+		expect do
+			client.closed!
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't write response body without writing response" do
+		expect do
+			server.write_body("HTTP/1.0", nil)
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't write request body without writing request" do
+		expect do
+			client.write_body("HTTP/1.0", nil)
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't read request body without reading request" do
+		# Fake empty chunked encoded body:
+		client.stream.write("0\r\n\r\n")
+		
+		body = server.read_request_body("POST", {"transfer-encoding" => ["chunked"]})
+		
+		expect(body).to be_a(Protocol::HTTP1::Body::Chunked)
+		
+		expect do
+			body.join
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
+	
+	it "can't write interim response in the closed state" do
+		server.state = :closed
+		
+		expect do
+			server.write_interim_response("HTTP/1.0", 100, {})
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
 	end
 end

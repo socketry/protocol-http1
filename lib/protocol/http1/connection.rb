@@ -109,6 +109,26 @@ module Protocol
 			# State transition methods use a trailing "!".
 			attr_accessor :state
 			
+			def idle?
+				@state == :idle
+			end
+			
+			def open?
+				@state == :open
+			end
+			
+			def half_closed_local?
+				@state == :half_closed_local
+			end
+			
+			def half_closed_remote?
+				@state == :half_closed_remote
+			end
+			
+			def closed?
+				@state == :closed
+			end
+			
 			# The number of requests processed.
 			attr :count
 			
@@ -185,7 +205,9 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				raise ProtocolError, "Cannot write response in #{@state}!" unless @state == :open
+				unless @state == :open or @state == :half_closed_remote
+					raise ProtocolError, "Cannot write response in #{@state}!"
+				end
 				
 				# Safari WebSockets break if no reason is given:
 				@stream.write("#{version} #{status} #{reason}\r\n")
@@ -194,7 +216,9 @@ module Protocol
 			end
 			
 			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				raise ProtocolError, "Cannot write interim response!" unless @state == :open
+				unless @state == :open or @state == :half_closed_remote
+					raise ProtocolError, "Cannot write interim response in #{@state}!"
+				end
 				
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
@@ -268,6 +292,10 @@ module Protocol
 				
 				body = read_request_body(method, headers)
 				
+				unless body
+					self.receive_end_stream!
+				end
+				
 				@count += 1
 				
 				return headers.delete(HOST), method, path, version, headers, body
@@ -281,8 +309,14 @@ module Protocol
 				return version, status, reason
 			end
 			
+			private def interim_status?(status)
+				status != 101 and status >= 100 and status < 200
+			end
+			
 			def read_response(method)
-				raise ProtocolError, "Cannot read response in #{@state}!" unless @state == :open
+				unless @state == :open or @state == :half_closed_local
+					raise ProtocolError, "Cannot read response in #{@state}!"
+				end
 				
 				version, status, reason = read_response_line
 				
@@ -290,9 +324,15 @@ module Protocol
 				
 				@persistent = persistent?(version, method, headers)
 				
-				body = read_response_body(method, status, headers)
-				
-				@count += 1
+				unless interim_status?(status)
+					body = read_response_body(method, status, headers)
+					
+					unless body
+						self.receive_end_stream!
+					end
+					
+					@count += 1
+				end
 				
 				return version, status, reason, headers, body
 			end
@@ -450,26 +490,16 @@ module Protocol
 				@stream.close_write
 			end
 			
-			def half_closed_local!
-				raise ProtocolError, "Cannot close local in #{@state}!" unless @state == :open
-				
-				@state = :half_closed_local
-			end
-			
-			def half_closed_remote!
-				raise ProtocolError, "Cannot close remote in #{@state}!" unless @state == :open
-				
-				@state = :half_closed_remote
-			end
-			
 			def idle!
 				@state = :idle
 			end
 			
 			def closed!
-				raise ProtocolError, "Cannot close in #{@state}!" unless @state == :half_closed_local or @state == :half_closed_remote
+				unless @state == :half_closed_local or @state == :half_closed_remote
+					raise ProtocolError, "Cannot close in #{@state}!" 
+				end
 				
-				if self.persistent?
+				if @persistent
 					self.idle!
 				else
 					@state = :closed
@@ -478,7 +508,7 @@ module Protocol
 			
 			def send_end_stream!
 				if @state == :open
-					self.half_closed_local!
+					@state = :half_closed_local
 				elsif @state == :half_closed_remote
 					self.closed!
 				else
@@ -521,7 +551,7 @@ module Protocol
 			
 			def receive_end_stream!
 				if @state == :open
-					self.half_closed_remote!
+					@state = :half_closed_remote
 				elsif @state == :half_closed_local
 					self.closed!
 				else
