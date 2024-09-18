@@ -50,10 +50,11 @@ module Protocol
 			HTTP10 = "HTTP/1.0"
 			HTTP11 = "HTTP/1.1"
 			
-			def initialize(stream, persistent = true)
+			def initialize(stream, persistent: true, state: :idle)
 				@stream = stream
 				
 				@persistent = persistent
+				@state = state
 				
 				@count = 0
 			end
@@ -69,6 +70,44 @@ module Protocol
 			# Changing to true from outside this class should generally be avoided and,
 			# depending on the response semantics, may be reset to false anyway.
 			attr_accessor :persistent
+			
+			# The current state of the connection.
+			#
+			# ```
+			#                          ┌────────┐
+			#                          │        │
+			# ┌───────────────────────►│  idle  │
+			# │                        │        │
+			# │                        └───┬────┘
+			# │                            │
+			# │                            │ send request /
+			# │                            │ receive request
+			# │                            │
+			# │                            ▼
+			# │                        ┌────────┐
+			# │                recv ES │        │ send ES
+			# │           ┌────────────┤  open  ├────────────┐
+			# │           │            │        │            │
+			# │           ▼            └───┬────┘            ▼
+			# │      ┌──────────┐          │           ┌──────────┐
+			# │      │   half   │          │           │   half   │
+			# │      │  closed  │          │           │  closed  │
+			# │      │ (remote) │          │           │ (local)  │
+			# │      └────┬─────┘          │           └─────┬────┘
+			# │           │                │                 │
+			# │           │ send ES /      │       recv ES / │
+			# │           │ close          ▼           close │
+			# │           │            ┌────────┐            │
+			# │           └───────────►│        │◄───────────┘
+			# │                        │ closed │
+			# └────────────────────────┤        │
+			#         persistent       └────────┘
+			# ```
+			#
+			# - `ES`: the body was fully received or sent (end of stream)
+			#
+			# State transition methods use a trailing "!".
+			attr_accessor :state
 			
 			# The number of requests processed.
 			attr :count
@@ -130,7 +169,15 @@ module Protocol
 				@stream&.close
 			end
 			
+			def open!
+				raise ProtocolError, "Cannot write request in #{@state}!" unless @state == :idle
+				
+				@state = :open
+			end
+			
 			def write_request(authority, method, path, version, headers)
+				open!
+				
 				@stream.write("#{method} #{path} #{version}\r\n")
 				@stream.write("host: #{authority}\r\n")
 				
@@ -138,6 +185,8 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
+				raise ProtocolError, "Cannot write response in #{@state}!" unless @state == :open
+				
 				# Safari WebSockets break if no reason is given:
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
@@ -145,6 +194,8 @@ module Protocol
 			end
 			
 			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
+				raise ProtocolError, "Cannot write interim response!" unless @state == :open
+				
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
@@ -173,12 +224,24 @@ module Protocol
 				end
 			end
 			
+			def readpartial(length)
+				@stream.readpartial(length)
+			end
+			
+			def read(length)
+				@stream.read(length)
+			end
+			
 			def read_line?
 				@stream.gets(CRLF, chomp: true)
 			end
 			
 			def read_line
 				read_line? or raise EOFError
+			end
+			
+			def close_read
+				@stream.close_read
 			end
 			
 			def read_request_line
@@ -194,6 +257,8 @@ module Protocol
 			end
 			
 			def read_request
+				open!
+				
 				method, path, version = read_request_line
 				return unless method
 				
@@ -217,6 +282,8 @@ module Protocol
 			end
 			
 			def read_response(method)
+				raise ProtocolError, "Cannot read response in #{@state}!" unless @state == :open
+				
 				version, status, reason = read_response_line
 				
 				headers = read_headers
@@ -383,6 +450,42 @@ module Protocol
 				@stream.close_write
 			end
 			
+			def half_closed_local!
+				raise ProtocolError, "Cannot close local in #{@state}!" unless @state == :open
+				
+				@state = :half_closed_local
+			end
+			
+			def half_closed_remote!
+				raise ProtocolError, "Cannot close remote in #{@state}!" unless @state == :open
+				
+				@state = :half_closed_remote
+			end
+			
+			def idle!
+				@state = :idle
+			end
+			
+			def closed!
+				raise ProtocolError, "Cannot close in #{@state}!" unless @state == :half_closed_local or @state == :half_closed_remote
+				
+				if self.persistent?
+					self.idle!
+				else
+					@state = :closed
+				end
+			end
+			
+			def send_end_stream!
+				if @state == :open
+					self.half_closed_local!
+				elsif @state == :half_closed_remote
+					self.closed!
+				else
+					raise ProtocolError, "Cannot send end stream in #{@state}!"
+				end
+			end
+			
 			def write_body(version, body, head = false, trailer = nil)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
@@ -412,22 +515,37 @@ module Protocol
 					write_connection_header(version)
 					write_body_and_close(body, head)
 				end
+			ensure
+				send_end_stream!
+			end
+			
+			def receive_end_stream!
+				if @state == :open
+					self.half_closed_remote!
+				elsif @state == :half_closed_local
+					self.closed!
+				else
+					raise ProtocolError, "Cannot receive end stream in #{@state}!"
+				end
 			end
 			
 			def read_chunked_body(headers)
-				Body::Chunked.new(@stream, headers)
+				Body::Chunked.new(self, headers)
 			end
 			
 			def read_fixed_body(length)
-				Body::Fixed.new(@stream, length)
+				Body::Fixed.new(self, length)
 			end
 			
 			def read_remainder_body
 				@persistent = false
-				Body::Remainder.new(@stream)
+				Body::Remainder.new(self)
 			end
 			
 			def read_head_body(length)
+				# We are not receiving any body:
+				self.receive_end_stream!
+				
 				Protocol::HTTP::Body::Head.new(length)
 			end
 			

@@ -10,6 +10,10 @@ module Protocol
 		class Error < HTTP::Error
 		end
 		
+		# The protocol was violated in some way, e.g. trying to write a request while reading a response.
+		class ProtocolError < Error
+		end
+		
 		# The request was not able to be parsed correctly, or failed some kind of validation.
 		class BadRequest < Error
 		end

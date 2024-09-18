@@ -17,6 +17,11 @@ describe Protocol::HTTP1::Connection do
 	let(:trailer) {Hash.new}
 	
 	with "trailers" do
+		before do
+			client.open!
+			server.open!
+		end
+		
 		it "ignores trailers with HTTP/1.0" do
 			expect(server).to receive(:write_fixed_length_body)
 			server.write_body("HTTP/1.0", body, false, trailer)

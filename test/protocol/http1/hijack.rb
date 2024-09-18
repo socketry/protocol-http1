@@ -6,6 +6,7 @@
 # Copyright, 2024, by Thomas Morgan.
 
 require "protocol/http1/connection"
+require "protocol/http/body/buffered"
 require "connection_context"
 
 describe Protocol::HTTP1::Connection do
@@ -28,6 +29,8 @@ describe Protocol::HTTP1::Connection do
 		end
 		
 		it "should use non-chunked output" do
+			server.open!
+			
 			expect(body).to receive(:ready?).and_return(false)
 			expect(body).to receive(:empty?).and_return(false)
 			expect(body).to receive(:length).twice.and_return(nil)
@@ -38,6 +41,8 @@ describe Protocol::HTTP1::Connection do
 			server.write_body(response_version, body)
 			
 			server_stream = server.hijack!
+			
+			client.open!
 			
 			version, status, reason, headers, body = client.read_response("GET")
 			

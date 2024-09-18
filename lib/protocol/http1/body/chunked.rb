@@ -12,8 +12,8 @@ module Protocol
 			class Chunked < HTTP::Body::Readable
 				CRLF = "\r\n"
 				
-				def initialize(stream, headers)
-					@stream = stream
+				def initialize(connection, headers)
+					@connection = connection
 					@finished = false
 					
 					@headers = headers
@@ -23,16 +23,16 @@ module Protocol
 				end
 				
 				def empty?
-					@stream.nil?
+					@connection.nil?
 				end
 				
 				def discard
-					if stream = @stream
-						@stream = nil
+					if connection = @connection
+						@connection = nil
 						
 						# We only close the connection if we haven't completed reading the entire body:
 						unless @finished
-							stream.close_read
+							connection.close_read
 						end
 					end
 				end
@@ -48,8 +48,8 @@ module Protocol
 				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
 				def read
 					if !@finished
-						if @stream
-							length, _extensions = read_line.split(";", 2)
+						if @connection
+							length, _extensions = @connection.read_line.split(";", 2)
 							
 							unless length =~ VALID_CHUNK_LENGTH
 								raise BadRequest, "Invalid chunk length: #{length.inspect}"
@@ -61,15 +61,16 @@ module Protocol
 							if length == 0
 								read_trailer
 								
-								# The final chunk has been read and the stream is now closed:
-								@stream = nil
+								# The final chunk has been read and the connection is now closed:
+								@connection.receive_end_stream!
+								@connection = nil
 								@finished = true
 								
 								return nil
 							end
 							
 							# Read trailing CRLF:
-							chunk = @stream.read(length + 2)
+							chunk = @connection.read(length + 2)
 							
 							if chunk.bytesize == length + 2
 								# ...and chomp it off:
@@ -80,13 +81,13 @@ module Protocol
 								
 								return chunk
 							else
-								# The stream has been closed before we have read the requested length:
+								# The connection has been closed before we have read the requested length:
 								self.discard
 							end
 						end
 						
-						# If the stream has been closed before we have read the final chunk, raise an error:
-						raise EOFError, "Stream closed before expected length was read!"
+						# If the connection has been closed before we have read the final chunk, raise an error:
+						raise EOFError, "connection closed before expected length was read!"
 					end
 				end
 				
@@ -96,16 +97,8 @@ module Protocol
 				
 				private
 				
-				def read_line?
-					@stream.gets(CRLF, chomp: true)
-				end
-				
-				def read_line
-					read_line? or raise EOFError
-				end
-				
 				def read_trailer
-					while line = read_line?
+					while line = @connection.read_line?
 						# Empty line indicates end of trailer:
 						break if line.empty?
 						

@@ -4,11 +4,13 @@
 # Copyright, 2019-2024, by Samuel Williams.
 
 require "protocol/http1/body/fixed"
+require "protocol/http1/connection"
 
 describe Protocol::HTTP1::Body::Fixed do
 	let(:content) {"Hello World"}
 	let(:buffer) {StringIO.new(content)}
-	let(:body) {subject.new(buffer, content.bytesize)}
+	let(:connection) {Protocol::HTTP1::Connection.new(buffer, state: :open)}
+	let(:body) {subject.new(connection, content.bytesize)}
 	
 	with "#inspect" do
 		it "can be inspected" do
@@ -47,7 +49,7 @@ describe Protocol::HTTP1::Body::Fixed do
 		end
 		
 		with "length smaller than stream size" do
-			let(:body) {subject.new(buffer, 5)}
+			let(:body) {subject.new(connection, 5)}
 			
 			it "retrieves content up to provided length" do
 				expect(body.read).to be == "Hello"
@@ -61,7 +63,7 @@ describe Protocol::HTTP1::Body::Fixed do
 		end
 		
 		with "length larger than stream size" do
-			let(:body) {subject.new(buffer, 20)}
+			let(:body) {subject.new(connection, 20)}
 			
 			it "retrieves content up to provided length" do
 				body.read

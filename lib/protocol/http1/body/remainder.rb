@@ -8,23 +8,25 @@ require "protocol/http/body/readable"
 module Protocol
 	module HTTP1
 		module Body
-			# A body that reads all remaining data from the stream.
+			# A body that reads all remaining data from the connection.
 			class Remainder < HTTP::Body::Readable
 				BLOCK_SIZE = 1024 * 64
 				
-				# block_size may be removed in the future. It is better managed by stream.
-				def initialize(stream)
-					@stream = stream
+				# block_size may be removed in the future. It is better managed by connection.
+				def initialize(connection)
+					@connection = connection
 				end
 				
 				def empty?
-					@stream.nil?
+					@connection.nil?
 				end
 				
 				def discard
-					if stream = @stream
-						@stream = nil
-						stream.close_read
+					if connection = @connection
+						@connection = nil
+						
+						# Ensure no further requests can be read from the connection, as we are discarding the body which may not be fully read:
+						connection.close_read
 					end
 				end
 				
@@ -35,15 +37,14 @@ module Protocol
 				end
 				
 				def read
-					@stream&.readpartial(BLOCK_SIZE)
-				rescue EOFError, IOError
-					@stream = nil
-					# I noticed that in some cases you will get EOFError, and in other cases IOError!?
-					return nil
+					@connection&.readpartial(BLOCK_SIZE)
+				rescue EOFError
+					@connection.receive_end_stream!
+					@connection = nil
 				end
 				
 				def inspect
-					"\#<#{self.class} state=#{@stream ? 'open' : 'closed'}>"
+					"\#<#{self.class} state=#{@connection ? 'open' : 'closed'}>"
 				end
 			end
 		end

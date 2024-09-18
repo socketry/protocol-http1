@@ -110,6 +110,8 @@ describe Protocol::HTTP1::Connection do
 	
 	with "#write_response" do
 		it "fails to write a response with invalid header name" do
+			server.open!
+			
 			invalid_header_names = [
 				"foo bar",
 				"foo:bar",
@@ -132,6 +134,8 @@ describe Protocol::HTTP1::Connection do
 	
 	with "#write_interim_response" do
 		it "can write iterm response" do
+			server.open!
+			
 			server.write_interim_response("HTTP/1.1", 100, {})
 			server.close
 			
@@ -187,6 +191,8 @@ describe Protocol::HTTP1::Connection do
 	
 	with "#read_response" do
 		it "should read successful response" do
+			client.open!
+			
 			server.stream.write("HTTP/1.1 200 Hello\r\nContent-Length: 0\r\n\r\n")
 			server.stream.close
 			
@@ -229,6 +235,8 @@ describe Protocol::HTTP1::Connection do
 		
 		with "HEAD" do
 			it "can read length of head response" do
+				client.open!
+				
 				body = client.read_response_body("HEAD", 200, {"content-length" => "3773"})
 				
 				expect(body).to be_a ::Protocol::HTTP::Body::Head
@@ -259,6 +267,11 @@ describe Protocol::HTTP1::Connection do
 	with "#write_chunked_body" do
 		let(:chunks) {["Hello", "World"]}
 		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
+		
+		before do
+			server.open!
+			client.open!
+		end
 		
 		it "can generate and read chunked response" do
 			server.write_chunked_body(body, false)
@@ -304,6 +317,11 @@ describe Protocol::HTTP1::Connection do
 	with "#write_fixed_length_body" do
 		let(:chunks) {["Hello", "World"]}
 		let(:body) {::Protocol::HTTP::Body::Buffered.wrap(chunks)}
+		
+		before do
+			server.open!
+			client.open!
+		end
 		
 		it "can generate a valid response" do
 			server.write_fixed_length_body(body, 10, false)
@@ -351,6 +369,11 @@ describe Protocol::HTTP1::Connection do
 	with "#write_upgrade_body" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
 		
+		before do
+			server.open!
+			client.open!
+		end
+		
 		it "can generate and read upgrade response" do
 			server.write_upgrade_body("text", body)
 			server.close
@@ -369,6 +392,11 @@ describe Protocol::HTTP1::Connection do
 	with "#write_tunnel_body" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
 		
+		before do
+			server.open!
+			client.open!
+		end
+		
 		it "can generate and read tunnel response" do
 			server.write_tunnel_body("HTTP/1.1", body)
 			server.close
@@ -385,6 +413,11 @@ describe Protocol::HTTP1::Connection do
 	
 	with "#write_body_and_close" do
 		let(:body) {::Protocol::HTTP::Body::Buffered.new(["Hello ", "World!"])}
+		
+		before do
+			server.open!
+			client.open!
+		end
 		
 		it "can generate and write response" do
 			server.write_body_and_close(body, false)
@@ -413,6 +446,10 @@ describe Protocol::HTTP1::Connection do
 	
 	with "#write_body" do
 		let(:body) {Protocol::HTTP::Body::Buffered.new}
+		
+		before do
+			server.open!
+		end
 		
 		it "can write empty body" do
 			expect(body).to receive(:empty?).and_return(true)

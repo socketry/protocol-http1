@@ -11,7 +11,8 @@ describe Protocol::HTTP1::Body::Chunked do
 	let(:postfix) {nil}
 	let(:headers) {Protocol::HTTP::Headers.new}
 	let(:buffer) {StringIO.new("#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n#{postfix}\r\n")}
-	let(:body) {subject.new(buffer, headers)}
+	let(:connection) {Protocol::HTTP1::Connection.new(buffer, state: :open)}
+	let(:body) {subject.new(connection, headers)}
 	
 	with "#inspect" do
 		it "can be inspected" do
@@ -48,6 +49,8 @@ describe Protocol::HTTP1::Body::Chunked do
 			expect(body.read).to be == "Hello World"
 			expect(body.read).to be == nil
 			expect(body.read).to be == nil
+			
+			expect(connection).to have_attributes(state: be == :half_closed_remote)
 		end
 		
 		it "updates number of bytes retrieved" do
