@@ -288,7 +288,7 @@ module Protocol
 				
 				body = read_request_body(method, headers)
 				
-				if body.nil?
+				unless body
 					self.receive_end_stream!
 				end
 				
@@ -306,7 +306,9 @@ module Protocol
 			end
 			
 			def read_response(method)
-				raise ProtocolError, "Cannot read response in #{@state}!" unless @state == :open
+				unless @state == :open or @state == :half_closed_local
+					raise ProtocolError, "Cannot read response in #{@state}!"
+				end
 				
 				version, status, reason = read_response_line
 				
@@ -315,6 +317,10 @@ module Protocol
 				@persistent = persistent?(version, method, headers)
 				
 				body = read_response_body(method, status, headers)
+				
+				unless body
+					self.receive_end_stream!
+				end
 				
 				@count += 1
 				
@@ -474,24 +480,14 @@ module Protocol
 				@stream.close_write
 			end
 			
-			def half_closed_local!
-				raise ProtocolError, "Cannot close local in #{@state}!" unless @state == :open
-				
-				@state = :half_closed_local
-			end
-			
-			def half_closed_remote!
-				raise ProtocolError, "Cannot close remote in #{@state}!" unless @state == :open
-				
-				@state = :half_closed_remote
-			end
-			
 			def idle!
 				@state = :idle
 			end
 			
 			def closed!
-				raise ProtocolError, "Cannot close in #{@state}!" unless @state == :half_closed_local or @state == :half_closed_remote
+				unless @state == :half_closed_local or @state == :half_closed_remote
+					raise ProtocolError, "Cannot close in #{@state}!" 
+				end
 				
 				if @persistent
 					self.idle!
@@ -502,7 +498,7 @@ module Protocol
 			
 			def send_end_stream!
 				if @state == :open
-					self.half_closed_local!
+					@state = :half_closed_local
 				elsif @state == :half_closed_remote
 					self.closed!
 				else
@@ -545,7 +541,7 @@ module Protocol
 			
 			def receive_end_stream!
 				if @state == :open
-					self.half_closed_remote!
+					@state = :half_closed_remote
 				elsif @state == :half_closed_local
 					self.closed!
 				else
