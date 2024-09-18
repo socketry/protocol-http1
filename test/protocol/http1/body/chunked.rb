@@ -33,6 +33,7 @@ describe Protocol::HTTP1::Body::Chunked do
 			body.close
 			
 			expect(body).to be(:empty?)
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "invokes close_read on the stream if closing with an error" do
@@ -41,6 +42,7 @@ describe Protocol::HTTP1::Body::Chunked do
 			body.close(EOFError)
 			
 			expect(body).to be(:empty?)
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -50,13 +52,19 @@ describe Protocol::HTTP1::Body::Chunked do
 			expect(body.read).to be == nil
 			expect(body.read).to be == nil
 			
-			expect(connection).to have_attributes(state: be == :half_closed_remote)
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "updates number of bytes retrieved" do
-			body.read
-			body.read # realizes there are no more chunks
+			expect(body).to have_attributes(length: be_nil, count: be == 0)
+			
+			expect(body.read).to be == "Hello World"
+			expect(body.read).to be_nil # there are no more chunks
+			
+			expect(body).to have_attributes(length: be == 11, count: be == 1)
+			
 			expect(body).to be(:empty?)
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		with "trailer" do
@@ -70,6 +78,8 @@ describe Protocol::HTTP1::Body::Chunked do
 				
 				expect(body.read).to be == nil
 				expect(headers["etag"]).to be == "abcd"
+				
+				expect(connection).to be(:half_closed_remote?)
 			end
 		end
 		
@@ -83,6 +93,9 @@ describe Protocol::HTTP1::Body::Chunked do
 				expect(headers["etag"]).to be_nil
 				
 				expect{body.read}.to raise_exception(Protocol::HTTP1::BadHeader)
+				
+				body.close
+				expect(connection).to be(:half_closed_remote?)
 			end
 		end
 		
@@ -91,6 +104,8 @@ describe Protocol::HTTP1::Body::Chunked do
 			
 			it "raises error" do
 				expect{body.read}.to raise_exception(EOFError)
+				
+				expect(connection).to be(:half_closed_remote?)
 			end
 		end
 	end

@@ -30,6 +30,8 @@ module Protocol
 						if @remaining != 0
 							connection.close_read
 						end
+						
+						connection.receive_end_stream!
 					end
 				end
 				

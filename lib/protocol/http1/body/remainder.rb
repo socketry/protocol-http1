@@ -27,6 +27,8 @@ module Protocol
 						
 						# Ensure no further requests can be read from the connection, as we are discarding the body which may not be fully read:
 						connection.close_read
+						
+						connection.receive_end_stream!
 					end
 				end
 				

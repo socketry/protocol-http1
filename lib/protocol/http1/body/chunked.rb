@@ -22,6 +22,15 @@ module Protocol
 					@count = 0
 				end
 				
+				attr :count
+				
+				def length
+					# We only know the length once we've read everything. This is because the length is not known until the final chunk is read.
+					if @finished
+						@length
+					end
+				end
+				
 				def empty?
 					@connection.nil?
 				end
@@ -34,6 +43,8 @@ module Protocol
 						unless @finished
 							connection.close_read
 						end
+						
+						connection.receive_end_stream!
 					end
 				end
 				

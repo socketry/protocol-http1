@@ -28,12 +28,16 @@ describe Protocol::HTTP1::Body::Remainder do
 		it "closes the stream" do
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "closes the stream when EOF was reached" do
 			body.read
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -45,6 +49,8 @@ describe Protocol::HTTP1::Body::Remainder do
 			expect(body.read).to be == nil
 			
 			expect(body).to be(:empty?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -53,6 +59,8 @@ describe Protocol::HTTP1::Body::Remainder do
 			stream = StringIO.new
 			body.call(stream)
 			expect(stream.string).to be == "Hello World"
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -63,6 +71,8 @@ describe Protocol::HTTP1::Body::Remainder do
 			expect(body.join).to be == "Hello World"
 			
 			expect(body).to be(:empty?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 end

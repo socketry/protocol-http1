@@ -28,12 +28,16 @@ describe Protocol::HTTP1::Body::Fixed do
 		it "closes the stream" do
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "doesn't close the stream when EOF was reached" do
 			body.read
 			body.close(EOFError)
 			expect(buffer).not.to be(:closed?)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -41,6 +45,8 @@ describe Protocol::HTTP1::Body::Fixed do
 		it "retrieves chunks of content" do
 			expect(body.read).to be == "Hello World"
 			expect(body.read).to be == nil
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "updates number of bytes retrieved" do
@@ -54,11 +60,19 @@ describe Protocol::HTTP1::Body::Fixed do
 			it "retrieves content up to provided length" do
 				expect(body.read).to be == "Hello"
 				expect(body.read).to be == nil
+				
+				expect(connection).to be(:half_closed_remote?)
 			end
 			
 			it "updates number of bytes retrieved" do
+				expect(body).to have_attributes(remaining: be == body.length)
+				
 				body.read
+				
+				expect(body).to have_attributes(remaining: be == 0)
 				expect(body).to be(:empty?)
+				
+				expect(connection).to be(:half_closed_remote?)
 			end
 		end
 		
@@ -89,6 +103,8 @@ describe Protocol::HTTP1::Body::Fixed do
 				length: be == chunk.bytesize,
 				remaining: be == 0
 			)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
@@ -99,6 +115,8 @@ describe Protocol::HTTP1::Body::Fixed do
 			expect do
 				body.read
 			end.to raise_exception(EOFError)
+			
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 end
