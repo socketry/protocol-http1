@@ -205,7 +205,9 @@ module Protocol
 			end
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				raise ProtocolError, "Cannot write response in #{@state}!" unless @state == :open or @state == :half_closed_remote
+				unless @state == :open or @state == :half_closed_remote
+					raise ProtocolError, "Cannot write response in #{@state}!"
+				end
 				
 				# Safari WebSockets break if no reason is given:
 				@stream.write("#{version} #{status} #{reason}\r\n")
@@ -214,7 +216,9 @@ module Protocol
 			end
 			
 			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
-				raise ProtocolError, "Cannot write interim response!" unless @state == :open
+				unless @state == :open or @state == :half_closed_remote
+					raise ProtocolError, "Cannot write interim response in #{@state}!"
+				end
 				
 				@stream.write("#{version} #{status} #{reason}\r\n")
 				
@@ -305,6 +309,10 @@ module Protocol
 				return version, status, reason
 			end
 			
+			private def interim_status?(status)
+				status != 101 and status >= 100 and status < 200
+			end
+			
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
 					raise ProtocolError, "Cannot read response in #{@state}!"
@@ -316,13 +324,15 @@ module Protocol
 				
 				@persistent = persistent?(version, method, headers)
 				
-				body = read_response_body(method, status, headers)
-				
-				unless body
-					self.receive_end_stream!
+				unless interim_status?(status)
+					body = read_response_body(method, status, headers)
+					
+					unless body
+						self.receive_end_stream!
+					end
+					
+					@count += 1
 				end
-				
-				@count += 1
 				
 				return version, status, reason, headers, body
 			end

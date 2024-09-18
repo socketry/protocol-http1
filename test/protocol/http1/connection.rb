@@ -675,4 +675,12 @@ describe Protocol::HTTP1::Connection do
 			body.join
 		end.to raise_exception(Protocol::HTTP1::ProtocolError)
 	end
+	
+	it "can't write interim response in the closed state" do
+		server.state = :closed
+		
+		expect do
+			server.write_interim_response("HTTP/1.0", 100, {})
+		end.to raise_exception(Protocol::HTTP1::ProtocolError)
+	end
 end
