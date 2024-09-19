@@ -28,21 +28,21 @@ describe Protocol::HTTP1::Body::Chunked do
 	
 	with "#close" do
 		it "invokes close_read on the stream if closing without reading all chunks" do
-			expect(buffer).to receive(:close_read)
+			expect(buffer).to receive(:close)
 			
 			body.close
 			
 			expect(body).to be(:empty?)
-			expect(connection).to be(:half_closed_remote?)
+			expect(connection).to be(:closed?)
 		end
 		
 		it "invokes close_read on the stream if closing with an error" do
-			expect(buffer).to receive(:close_read)
+			expect(buffer).to receive(:close)
 			
 			body.close(EOFError)
 			
 			expect(body).to be(:empty?)
-			expect(connection).to be(:half_closed_remote?)
+			expect(connection).to be(:closed?)
 		end
 	end
 	
@@ -95,7 +95,8 @@ describe Protocol::HTTP1::Body::Chunked do
 				expect{body.read}.to raise_exception(Protocol::HTTP1::BadHeader)
 				
 				body.close
-				expect(connection).to be(:half_closed_remote?)
+				
+				expect(connection).to be(:closed?)
 			end
 		end
 		
@@ -105,7 +106,7 @@ describe Protocol::HTTP1::Body::Chunked do
 			it "raises error" do
 				expect{body.read}.to raise_exception(EOFError)
 				
-				expect(connection).to be(:half_closed_remote?)
+				expect(connection).to be(:closed?)
 			end
 		end
 	end

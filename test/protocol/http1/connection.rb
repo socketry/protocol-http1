@@ -645,12 +645,6 @@ describe Protocol::HTTP1::Connection do
 		end.to raise_exception(Protocol::HTTP1::ProtocolError)
 	end
 	
-	it "can't enter the closed state from the idle state" do
-		expect do
-			client.closed!
-		end.to raise_exception(Protocol::HTTP1::ProtocolError)
-	end
-	
 	it "can't write response body without writing response" do
 		expect do
 			server.write_body("HTTP/1.0", nil)

@@ -35,21 +35,14 @@ module Protocol
 					@connection.nil?
 				end
 				
-				def discard
+				def close(error = nil)
 					if connection = @connection
 						@connection = nil
 						
-						# We only close the connection if we haven't completed reading the entire body:
 						unless @finished
-							connection.close_read
+							connection.close
 						end
-						
-						connection.receive_end_stream!
 					end
-				end
-				
-				def close(error = nil)
-					self.discard
 					
 					super
 				end
@@ -93,7 +86,8 @@ module Protocol
 								return chunk
 							else
 								# The connection has been closed before we have read the requested length:
-								self.discard
+								@connection.close
+								@connection = nil
 							end
 						end
 						

@@ -181,12 +181,16 @@ module Protocol
 				@stream.flush
 				@stream = nil
 				
+				self.closed!
+				
 				return stream
 			end
 			
 			# Close the connection and underlying stream.
 			def close
+				@persistent = false
 				@stream&.close
+				self.closed!
 			end
 			
 			def open!
@@ -262,10 +266,6 @@ module Protocol
 			
 			def read_line
 				read_line? or raise EOFError
-			end
-			
-			def close_read
-				@stream.close_read
 			end
 			
 			def read_request_line
@@ -354,6 +354,16 @@ module Protocol
 				return HTTP::Headers.new(fields)
 			end
 			
+			def send_end_stream!
+				if @state == :open
+					@state = :half_closed_local
+				elsif @state == :half_closed_remote
+					self.closed!
+				else
+					raise ProtocolError, "Cannot send end stream in #{@state}!"
+				end
+			end
+			
 			# @param protocol [String] the protocol to upgrade to.
 			def write_upgrade_body(protocol, body = nil)
 				# Once we upgrade the connection, it can no longer handle other requests:
@@ -374,6 +384,8 @@ module Protocol
 				end
 				
 				return @stream
+			ensure
+				self.send_end_stream!
 			end
 			
 			def write_tunnel_body(version, body = nil)
@@ -394,6 +406,8 @@ module Protocol
 				end
 				
 				return @stream
+			ensure
+				self.send_end_stream!
 			end
 			
 			def write_empty_body(body)
@@ -401,6 +415,8 @@ module Protocol
 				@stream.flush
 				
 				body&.close
+			ensure
+				self.send_end_stream!
 			end
 			
 			def write_fixed_length_body(body, length, head)
@@ -433,6 +449,8 @@ module Protocol
 				if chunk_length != length
 					raise ContentLengthError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
 				end
+			ensure
+				self.send_end_stream!
 			end
 			
 			def write_chunked_body(body, head, trailer = nil)
@@ -467,6 +485,8 @@ module Protocol
 				end
 				
 				@stream.flush
+			ensure
+				self.send_end_stream!
 			end
 			
 			def write_body_and_close(body, head)
@@ -488,6 +508,8 @@ module Protocol
 				
 				@stream.flush
 				@stream.close_write
+			ensure
+				self.send_end_stream!
 			end
 			
 			def idle!
@@ -495,24 +517,10 @@ module Protocol
 			end
 			
 			def closed!
-				unless @state == :half_closed_local or @state == :half_closed_remote
-					raise ProtocolError, "Cannot close in #{@state}!" 
-				end
-				
 				if @persistent
 					self.idle!
 				else
 					@state = :closed
-				end
-			end
-			
-			def send_end_stream!
-				if @state == :open
-					@state = :half_closed_local
-				elsif @state == :half_closed_remote
-					self.closed!
-				else
-					raise ProtocolError, "Cannot send end stream in #{@state}!"
 				end
 			end
 			
@@ -545,8 +553,6 @@ module Protocol
 					write_connection_header(version)
 					write_body_and_close(body, head)
 				end
-			ensure
-				send_end_stream!
 			end
 			
 			def receive_end_stream!

@@ -23,20 +23,14 @@ module Protocol
 					@connection.nil? or @remaining == 0
 				end
 				
-				def discard
+				def close(error = nil)
 					if connection = @connection
 						@connection = nil
 						
-						if @remaining != 0
-							connection.close_read
+						unless @remaining == 0
+							connection.close
 						end
-						
-						connection.receive_end_stream!
 					end
-				end
-				
-				def close(error = nil)
-					self.discard
 					
 					super
 				end

@@ -29,7 +29,7 @@ describe Protocol::HTTP1::Body::Fixed do
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
 			
-			expect(connection).to be(:half_closed_remote?)
+			expect(connection).to be(:closed?)
 		end
 		
 		it "doesn't close the stream when EOF was reached" do
@@ -38,6 +38,14 @@ describe Protocol::HTTP1::Body::Fixed do
 			expect(buffer).not.to be(:closed?)
 			
 			expect(connection).to be(:half_closed_remote?)
+		end
+		
+		it "causes #read to raise EOFError" do
+			body.close
+			
+			expect do
+				body.read
+			end.to raise_exception(EOFError)
 		end
 	end
 	
@@ -109,12 +117,10 @@ describe Protocol::HTTP1::Body::Fixed do
 	end
 	
 	with "#discard" do
-		it "causes #read to raise EOFError" do
+		it "causes #read to return nil" do
 			body.discard
 			
-			expect do
-				body.read
-			end.to raise_exception(EOFError)
+			expect(body.read).to be == nil
 			
 			expect(connection).to be(:half_closed_remote?)
 		end
