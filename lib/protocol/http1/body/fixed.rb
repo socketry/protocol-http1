@@ -28,7 +28,7 @@ module Protocol
 						@connection = nil
 						
 						unless @remaining == 0
-							connection.close
+							connection.close_read
 						end
 					end
 					

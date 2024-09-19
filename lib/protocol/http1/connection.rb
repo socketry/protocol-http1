@@ -186,6 +186,12 @@ module Protocol
 				return stream
 			end
 			
+			def close_read
+				@persistent = false
+				@stream&.close_read
+				self.receive_end_stream!
+			end
+			
 			# Close the connection and underlying stream.
 			def close
 				@persistent = false

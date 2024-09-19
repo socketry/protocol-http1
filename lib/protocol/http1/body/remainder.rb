@@ -26,7 +26,7 @@ module Protocol
 						@connection = nil
 						
 						# Ensure no further requests can be read from the connection, as we are discarding the body which may not be fully read:
-						connection.close
+						connection.close_read
 					end
 				end
 				
@@ -39,8 +39,12 @@ module Protocol
 				def read
 					@connection&.readpartial(BLOCK_SIZE)
 				rescue EOFError
-					@connection.receive_end_stream!
-					@connection = nil
+					if connection = @connection
+						@connection = nil
+						connection.receive_end_stream!
+					end
+					
+					return nil
 				end
 				
 				def inspect

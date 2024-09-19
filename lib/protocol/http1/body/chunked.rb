@@ -40,7 +40,7 @@ module Protocol
 						@connection = nil
 						
 						unless @finished
-							connection.close
+							connection.close_read
 						end
 					end
 					
@@ -86,7 +86,7 @@ module Protocol
 								return chunk
 							else
 								# The connection has been closed before we have read the requested length:
-								@connection.close
+								@connection.close_read
 								@connection = nil
 							end
 						end

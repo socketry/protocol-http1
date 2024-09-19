@@ -29,7 +29,7 @@ describe Protocol::HTTP1::Body::Remainder do
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
 			
-			expect(connection).to be(:closed?)
+			expect(connection).to be(:half_closed_remote?)
 		end
 		
 		it "closes the stream when EOF was reached" do
@@ -37,7 +37,7 @@ describe Protocol::HTTP1::Body::Remainder do
 			body.close(EOFError)
 			expect(buffer).to be(:closed?)
 			
-			expect(connection).to be(:closed?)
+			expect(connection).to be(:half_closed_remote?)
 		end
 	end
 	
