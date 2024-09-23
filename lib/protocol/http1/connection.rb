@@ -176,14 +176,15 @@ module Protocol
 			# @return [IO] the underlying non-blocking IO.
 			def hijack!
 				@persistent = false
-				stream = @stream
 				
-				@stream.flush
-				@stream = nil
-				
-				self.closed!
-				
-				return stream
+				if stream = @stream
+					@stream = nil
+					stream.flush
+					
+					self.closed!
+					
+					return stream
+				end
 			end
 			
 			def close_read
@@ -193,10 +194,15 @@ module Protocol
 			end
 			
 			# Close the connection and underlying stream.
-			def close
+			def close(error = nil)
 				@persistent = false
-				@stream&.close
-				self.closed!
+				
+				if stream = @stream
+					@stream = nil
+					stream.close
+				end
+				
+				self.closed!(error)
 			end
 			
 			def open!
@@ -518,13 +524,15 @@ module Protocol
 				self.send_end_stream!
 			end
 			
-			def idle!
-				@state = :idle
-			end
-			
-			def closed!
-				if @persistent
-					self.idle!
+			# Transition to the closed state.
+			#
+			# If no error occurred, and the connection is persistent, this will immediately transition to the idle state.
+			#
+			# @parameter error [Exxception] the error that caused the connection to close.
+			def closed!(error = nil)
+				if @persistent and !error
+					# If there was no error, and the connection is persistent, we can reuse it:
+					@state = :idle
 				else
 					@state = :closed
 				end

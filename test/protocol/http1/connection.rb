@@ -677,4 +677,21 @@ describe Protocol::HTTP1::Connection do
 			server.write_interim_response("HTTP/1.0", 100, {})
 		end.to raise_exception(Protocol::HTTP1::ProtocolError)
 	end
+	
+	with "#close" do
+		it "enters closed state" do
+			server.close
+			expect(server).to be(:closed?)
+		end
+		
+		it "enters closed state when given an error" do
+			expect(server).to be(:persistent)
+			error = Protocol::HTTP1::InvalidRequest.new("Invalid request")
+			
+			expect(server).to receive(:closed!).with(error)
+			
+			server.close(error)
+			expect(server).to be(:closed?)
+		end
+	end
 end
