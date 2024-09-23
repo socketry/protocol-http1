@@ -91,8 +91,8 @@ module Protocol
 			# │           ▼            └───┬────┘            ▼
 			# │      ┌──────────┐          │           ┌──────────┐
 			# │      │   half   │          │           │   half   │
-			# │      │  closed  │          │           │  closed  │
-			# │      │ (remote) │          │           │ (local)  │
+			# │      │  closed  │          │ send R /  │  closed  │
+			# │      │ (remote) │          │ recv R    │ (local)  │
 			# │      └────┬─────┘          │           └─────┬────┘
 			# │           │                │                 │
 			# │           │ send ES /      │       recv ES / │
@@ -104,7 +104,8 @@ module Protocol
 			#         persistent       └────────┘
 			# ```
 			#
-			# - `ES`: the body was fully received or sent (end of stream)
+			# - `ES`: the body was fully received or sent (end of stream).
+			# - `R`: the connection was closed unexpectedly (reset).
 			#
 			# State transition methods use a trailing "!".
 			attr_accessor :state
