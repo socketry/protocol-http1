@@ -211,11 +211,11 @@ module Protocol
 			end
 			
 			def open!
-				if @state == :idle
-					@state = :open
-				else
+				unless @state == :idle
 					raise ProtocolError, "Cannot open connection in state: #{@state}!"
 				end
+				
+				@state = :open
 				
 				return self
 			end
@@ -231,7 +231,7 @@ module Protocol
 			
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
 				unless @state == :open or @state == :half_closed_remote
-					raise ProtocolError, "Cannot write response in #{@state}!"
+					raise ProtocolError, "Cannot write response in state: #{@state}!"
 				end
 				
 				# Safari WebSockets break if no reason is given:
@@ -242,7 +242,7 @@ module Protocol
 			
 			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
 				unless @state == :open or @state == :half_closed_remote
-					raise ProtocolError, "Cannot write interim response in #{@state}!"
+					raise ProtocolError, "Cannot write interim response in state: #{@state}!"
 				end
 				
 				@stream.write("#{version} #{status} #{reason}\r\n")
@@ -336,7 +336,7 @@ module Protocol
 			
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
-					raise ProtocolError, "Cannot read response in #{@state}!"
+					raise ProtocolError, "Cannot read response in state: #{@state}!"
 				end
 				
 				version, status, reason = read_response_line
@@ -381,7 +381,7 @@ module Protocol
 				elsif @state == :half_closed_remote
 					self.close!
 				else
-					raise ProtocolError, "Cannot send end stream in #{@state}!"
+					raise ProtocolError, "Cannot send end stream in state: #{@state}!"
 				end
 			end
 			
@@ -590,7 +590,7 @@ module Protocol
 				elsif @state == :half_closed_local
 					self.close!
 				else
-					raise ProtocolError, "Cannot receive end stream in #{@state}!"
+					raise ProtocolError, "Cannot receive end stream in state: #{@state}!"
 				end
 			end
 			
