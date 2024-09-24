@@ -182,7 +182,8 @@ module Protocol
 					@stream = nil
 					stream.flush
 					
-					self.closed!
+					@state = :hijacked
+					self.closed
 					
 					return stream
 				end
@@ -203,13 +204,20 @@ module Protocol
 					stream.close
 				end
 				
-				self.closed!(error)
+				unless closed?
+					@state = :closed
+					self.closed(error)
+				end
 			end
 			
 			def open!
-				raise ProtocolError, "Cannot write request in #{@state}!" unless @state == :idle
+				if @state == :idle
+					@state = :open
+				else
+					raise ProtocolError, "Cannot open connection in state: #{@state}!"
+				end
 				
-				@state = :open
+				return self
 			end
 			
 			def write_request(authority, method, path, version, headers)
@@ -371,7 +379,7 @@ module Protocol
 				if @state == :open
 					@state = :half_closed_local
 				elsif @state == :half_closed_remote
-					self.closed!
+					self.close!
 				else
 					raise ProtocolError, "Cannot send end stream in #{@state}!"
 				end
@@ -525,18 +533,24 @@ module Protocol
 				self.send_end_stream!
 			end
 			
+			# The connection (stream) was closed. It may now be in the idle state.
+			def closed(error = nil)
+			end
+			
 			# Transition to the closed state.
 			#
 			# If no error occurred, and the connection is persistent, this will immediately transition to the idle state.
 			#
 			# @parameter error [Exxception] the error that caused the connection to close.
-			def closed!(error = nil)
+			def close!(error = nil)
 				if @persistent and !error
 					# If there was no error, and the connection is persistent, we can reuse it:
 					@state = :idle
 				else
 					@state = :closed
 				end
+				
+				self.closed(error)
 			end
 			
 			def write_body(version, body, head = false, trailer = nil)
@@ -574,7 +588,7 @@ module Protocol
 				if @state == :open
 					@state = :half_closed_remote
 				elsif @state == :half_closed_local
-					self.closed!
+					self.close!
 				else
 					raise ProtocolError, "Cannot receive end stream in #{@state}!"
 				end

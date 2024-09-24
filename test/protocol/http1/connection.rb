@@ -688,7 +688,7 @@ describe Protocol::HTTP1::Connection do
 			expect(server).to be(:persistent)
 			error = Protocol::HTTP1::InvalidRequest.new("Invalid request")
 			
-			expect(server).to receive(:closed!).with(error)
+			expect(server).to receive(:closed).with(error)
 			
 			server.close(error)
 			expect(server).to be(:closed?)
