@@ -45,18 +45,22 @@ module Protocol
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
 		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
 		
+		DEFAULT_MAXIMUM_LINE_LENGTH = 8192
+		
 		class Connection
 			CRLF = "\r\n"
 			HTTP10 = "HTTP/1.0"
 			HTTP11 = "HTTP/1.1"
 			
-			def initialize(stream, persistent: true, state: :idle)
+			def initialize(stream, persistent: true, state: :idle, maximum_line_length: DEFAULT_MAXIMUM_LINE_LENGTH)
 				@stream = stream
 				
 				@persistent = persistent
 				@state = state
 				
 				@count = 0
+				
+				@maximum_line_length = maximum_line_length
 			end
 			
 			attr :stream
@@ -282,7 +286,14 @@ module Protocol
 			end
 			
 			def read_line?
-				@stream.gets(CRLF, chomp: true)
+				line = @stream.gets(CRLF, @maximum_line_length)
+				
+				unless line.chomp!(CRLF)
+					# This basically means that the request line, response line, header, or chunked length line is too long.
+					raise LineLengthError, "Line too long!"
+				end
+				
+				return line
 			end
 			
 			def read_line
