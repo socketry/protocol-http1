@@ -286,11 +286,11 @@ module Protocol
 			end
 			
 			def read_line?
-				line = @stream.gets(CRLF, @maximum_line_length)
-				
-				unless line.chomp!(CRLF)
-					# This basically means that the request line, response line, header, or chunked length line is too long.
-					raise LineLengthError, "Line too long!"
+				if line = @stream.gets(CRLF, @maximum_line_length)
+					unless line.chomp!(CRLF)
+						# This basically means that the request line, response line, header, or chunked length line is too long.
+						raise LineLengthError, "Line too long!"
+					end
 				end
 				
 				return line

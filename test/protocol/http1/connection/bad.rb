@@ -145,4 +145,19 @@ describe Protocol::HTTP1::Connection do
 			end.to raise_exception(Protocol::HTTP1::LineLengthError)
 		end
 	end
+	
+	with "incomplete headers" do
+		def input
+			<<~HTTP.gsub("\n", "\r\n")
+			POST / HTTP/1.1
+			Host: a.com
+			HTTP
+		end
+		
+		it "should fail to parse the request" do
+			expect do
+				server.read_request
+			end.to raise_exception(EOFError)
+		end
+	end
 end
