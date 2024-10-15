@@ -9,11 +9,16 @@ require "connection_context"
 describe Protocol::HTTP1::Connection do
 	include_context ConnectionContext
 	
-	def before
-		super
-		
-		client.stream.write(input)
-		client.stream.close
+	before do
+		# We use a thread here, as writing to the stream may block, e.g. if the input is big enough.
+		@writer = Thread.new do
+			client.stream.write(input)
+			client.stream.close
+		end
+	end
+	
+	after do
+		@writer.join
 	end
 	
 	with "invalid hexadecimal content-length" do
@@ -120,6 +125,24 @@ describe Protocol::HTTP1::Connection do
 			expect do
 				body.read
 			end.to raise_exception(Protocol::HTTP1::BadRequest)
+		end
+	end
+	
+	with "line length exceeding the limit" do
+		def input
+			<<~HTTP.gsub("\n", "\r\n")
+			POST / HTTP/1.1
+			Host: a.com
+			Connection: close
+			Long-Header: #{'a' * 8192}
+			
+			HTTP
+		end
+		
+		it "should fail to parse the request" do
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::LineLengthError)
 		end
 	end
 end
