@@ -107,6 +107,24 @@ describe Protocol::HTTP1::Connection do
 				server.read_request
 			end.to raise_exception(Protocol::HTTP1::InvalidRequest)
 		end
+		
+		it "yields to block" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
+			client.stream.close
+			
+			result = server.read_request do |authority, method, target, version, headers, body|
+				expect(authority).to be == "localhost"
+				expect(method).to be == "GET"
+				expect(target).to be == "/"
+				expect(version).to be == "HTTP/1.1"
+				expect(headers).to be == {}
+				expect(body).to be_nil
+				
+				:yielded
+			end
+			
+			expect(result).to be == :yielded
+		end
 	end
 	
 	with "#write_response" do
@@ -206,6 +224,25 @@ describe Protocol::HTTP1::Connection do
 			expect(reason).to be == "Hello"
 			expect(headers).to be == {}
 			expect(body).to be_nil
+		end
+		
+		it "should yield to block" do
+			client.open!
+			
+			server.stream.write("HTTP/1.1 200 Hello\r\nContent-Length: 0\r\n\r\n")
+			server.stream.close
+			
+			result = client.read_response("GET") do |version, status, reason, headers, body|
+				expect(version).to be == "HTTP/1.1"
+				expect(status).to be == 200
+				expect(reason).to be == "Hello"
+				expect(headers).to be == {}
+				expect(body).to be_nil
+				
+				:yielded
+			end
+			
+			expect(result).to be == :yielded
 		end
 	end
 	

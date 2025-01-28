@@ -330,7 +330,11 @@ module Protocol
 				
 				@count += 1
 				
-				return headers.delete(HOST), method, path, version, headers, body
+				if block_given?
+					yield headers.delete(HOST), method, path, version, headers, body
+				else
+					return headers.delete(HOST), method, path, version, headers, body
+				end
 			end
 			
 			def read_response_line
@@ -366,7 +370,11 @@ module Protocol
 					@count += 1
 				end
 				
-				return version, status, reason, headers, body
+				if block_given?
+					yield version, status, reason, headers, body
+				else
+					return version, status, reason, headers, body
+				end
 			end
 			
 			def read_headers
