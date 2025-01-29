@@ -224,11 +224,11 @@ module Protocol
 				return self
 			end
 			
-			def write_request(authority, method, path, version, headers)
+			def write_request(authority, method, target, version, headers)
 				open!
 				
-				@stream.write("#{method} #{path} #{version}\r\n")
-				@stream.write("host: #{authority}\r\n")
+				@stream.write("#{method} #{target} #{version}\r\n")
+				@stream.write("host: #{authority}\r\n") if authority
 				
 				write_headers(headers)
 			end
