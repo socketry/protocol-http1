@@ -320,7 +320,11 @@ module Protocol
 				
 				headers = read_headers
 				
-				@persistent = persistent?(version, method, headers)
+				# If we are not persistent, we can't become persistent even if the request might allow it:
+				if @persistent
+					# In other words, `@persistent` can only transition from true to false.
+					@persistent = persistent?(version, method, headers)
+				end
 				
 				body = read_request_body(method, headers)
 				
