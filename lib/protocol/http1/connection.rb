@@ -11,10 +11,8 @@ require "protocol/http/headers"
 
 require_relative "reason"
 require_relative "error"
+require_relative "body"
 
-require_relative "body/chunked"
-require_relative "body/fixed"
-require_relative "body/remainder"
 require "protocol/http/body/head"
 
 require "protocol/http/methods"
@@ -47,11 +45,21 @@ module Protocol
 		
 		DEFAULT_MAXIMUM_LINE_LENGTH = 8192
 		
+		# Represents a single HTTP/1.x connection, which may be used to send and receive multiple requests and responses.
 		class Connection
 			CRLF = "\r\n"
+			
+			# The HTTP/1.0 version string.
 			HTTP10 = "HTTP/1.0"
+			
+			# The HTTP/1.1 version string.
 			HTTP11 = "HTTP/1.1"
 			
+			# Initialize the connection with the given stream.
+			#
+			# @parameter stream [IO] the stream to read and write data from.
+			# @parameter persistent [Boolean] whether the connection is persistent.
+			# @parameter state [Symbol] the initial state of the connection, typically idle.
 			def initialize(stream, persistent: true, state: :idle, maximum_line_length: DEFAULT_MAXIMUM_LINE_LENGTH)
 				@stream = stream
 				
@@ -63,16 +71,12 @@ module Protocol
 				@maximum_line_length = maximum_line_length
 			end
 			
+			# The underlying IO stream.
 			attr :stream
 			
-			# Whether the connection is persistent.
-			# This determines what connection headers are sent in the response and whether
-			# the connection can be reused after the response is sent.
-			# This setting is automatically managed according to the nature of the request
-			# and response.
-			# Changing to false is safe.
-			# Changing to true from outside this class should generally be avoided and,
-			# depending on the response semantics, may be reset to false anyway.
+			# @attribute [Boolean] true if the connection is persistent.
+			#
+			# This determines what connection headers are sent in the response and whether the connection can be reused after the response is sent. This setting is automatically managed according to the nature of the request and response. Changing to false is safe. Changing to true from outside this class should generally be avoided and, depending on the response semantics, may be reset to false anyway.
 			attr_accessor :persistent
 			
 			# The current state of the connection.
@@ -114,29 +118,40 @@ module Protocol
 			# State transition methods use a trailing "!".
 			attr_accessor :state
 			
+			# @return [Boolean] whether the connection is in the idle state.
 			def idle?
 				@state == :idle
 			end
 			
+			# @return [Boolean] whether the connection is in the open state.
 			def open?
 				@state == :open
 			end
 			
+			# @return [Boolean] whether the connection is in the half-closed local state.
 			def half_closed_local?
 				@state == :half_closed_local
 			end
 			
+			# @return [Boolean] whether the connection is in the half-closed remote state.
 			def half_closed_remote?
 				@state == :half_closed_remote
 			end
 			
+			# @return [Boolean] whether the connection is in the closed state.
 			def closed?
 				@state == :closed
 			end
 			
-			# The number of requests processed.
+			# @attribute [Integer] the number of requests and responses processed by this connection.
 			attr :count
 			
+			# Indicates whether the connection is persistent given the version, method, and headers.
+			#
+			# @parameter version [String] the HTTP version.
+			# @parameter method [String] the HTTP method.
+			# @parameter headers [Hash] the HTTP headers.
+			# @return [Boolean] whether the connection can be persistent.
 			def persistent?(version, method, headers)
 				if method == HTTP::Methods::CONNECT
 					return false
@@ -166,19 +181,21 @@ module Protocol
 				end
 			end
 			
+			# Write the appropriate header for connection upgrade.
 			def write_upgrade_header(upgrade)
 				@stream.write("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
 			end
 			
-			# Indicates whether the connection has been hijacked meaning its
-			# IO has been handed over and is not usable anymore.
-			# @return [Boolean] hijack status
+			# Indicates whether the connection has been hijacked meaning its IO has been handed over and is not usable anymore.
+			#
+			# @returns [Boolean] hijack status
 			def hijacked?
 				@stream.nil?
 			end
 			
-			# Effectively close the connection and return the underlying IO.
-			# @return [IO] the underlying non-blocking IO.
+			# Hijack the connection - that is, take over the underlying IO and close the connection.
+			#
+			# @returns [IO | Nil] the underlying non-blocking IO.
 			def hijack!
 				@persistent = false
 				
@@ -193,13 +210,14 @@ module Protocol
 				end
 			end
 			
+			# Close the read end of the connection and transition to the half-closed remote state (or closed if already in the half-closed local state).
 			def close_read
 				@persistent = false
 				@stream&.close_read
 				self.receive_end_stream!
 			end
 			
-			# Close the connection and underlying stream.
+			# Close the connection and underlying stream and transition to the closed state.
 			def close(error = nil)
 				@persistent = false
 				
@@ -214,6 +232,9 @@ module Protocol
 				end
 			end
 			
+			# Force a transition to the open state.
+			#
+			# @raises [ProtocolError] if the connection is not in the idle state.
 			def open!
 				unless @state == :idle
 					raise ProtocolError, "Cannot open connection in state: #{@state}!"
@@ -224,6 +245,16 @@ module Protocol
 				return self
 			end
 			
+			# Write a request to the connection. It is expected you will write the body after this method.
+			#
+			# Transitions to the open state.
+			#
+			# @parameter authority [String] the authority of the request.
+			# @parameter method [String] the HTTP method.
+			# @parameter target [String] the request target.
+			# @parameter version [String] the HTTP version.
+			# @parameter headers [Hash] the HTTP headers.
+			# @raises [ProtocolError] if the connection is not in the idle state.
 			def write_request(authority, method, target, version, headers)
 				open!
 				
@@ -233,6 +264,12 @@ module Protocol
 				write_headers(headers)
 			end
 			
+			# Write a response to the connection. It is expected you will write the body after this method.
+			#
+			# @parameter version [String] the HTTP version.
+			# @parameter status [Integer] the HTTP status code.
+			# @parameter headers [Hash] the HTTP headers.
+			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
 			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write response in state: #{@state}!"
@@ -244,6 +281,13 @@ module Protocol
 				write_headers(headers)
 			end
 			
+			# Write an interim response to the connection. It is expected you will eventually write the final response after this method.
+			#
+			# @parameter version [String] the HTTP version.
+			# @parameter status [Integer] the HTTP status code.
+			# @parameter headers [Hash] the HTTP headers.
+			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
+			# @raises [ProtocolError] if the connection is not in the open or half-closed remote state.
 			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write interim response in state: #{@state}!"
@@ -257,6 +301,10 @@ module Protocol
 				@stream.flush
 			end
 			
+			# Write headers to the connection.
+			#
+			# @parameter headers [Hash] the headers to write.
+			# @raises [BadHeader] if the header name or value is invalid.
 			def write_headers(headers)
 				headers.each do |name, value|
 					# Convert it to a string:
@@ -277,14 +325,25 @@ module Protocol
 				end
 			end
 			
+			# Read some data from the connection.
+			#
+			# @parameter length [Integer] the maximum number of bytes to read.
 			def readpartial(length)
 				@stream.readpartial(length)
 			end
 			
+			# Read some data from the connection.
+			#
+			# @parameter length [Integer] the number of bytes to read.
 			def read(length)
 				@stream.read(length)
 			end
 			
+			# Read a line from the connection.
+			#
+			# @returns [String | Nil] the line read, or nil if the connection is closed.
+			# @raises [EOFError] if the connection is closed.
+			# @raises [LineLengthError] if the line is too long.
 			def read_line?
 				if line = @stream.gets(CRLF, @maximum_line_length)
 					unless line.chomp!(CRLF)
@@ -296,10 +355,17 @@ module Protocol
 				return line
 			end
 			
+			# Read a line from the connection.
+			#
+			# @raises [EOFError] if a line could not be read.
+			# @raises [LineLengthError] if the line is too long.
 			def read_line
 				read_line? or raise EOFError
 			end
 			
+			# Read a request line from the connection.
+			#
+			# @returns [Tuple(String, String, String) | Nil] the method, path, and version of the request, or nil if the connection is closed.
 			def read_request_line
 				return unless line = read_line?
 				
@@ -312,6 +378,13 @@ module Protocol
 				return method, path, version
 			end
 			
+			# Read a request from the connection, including the request line and request headers, and prepares to read the request body.
+			#
+			# Transitions to the open state.
+			#
+			# @yields {|host, method, path, version, headers, body| ...} if a block is given.
+			# @returns [Tuple(String, String, String, String, HTTP::Headers, Protocol::HTTP1::Body) | Nil] the host, method, path, version, headers, and body of the request, or `nil` if the connection is closed.
+			# @raises [ProtocolError] if the connection is not in the idle state.
 			def read_request
 				open!
 				
@@ -341,6 +414,10 @@ module Protocol
 				end
 			end
 			
+			# Read a response line from the connection.
+			#
+			# @returns [Tuple(String, Integer, String)] the version, status, and reason of the response.
+			# @raises [EOFError] if the connection is closed.
 			def read_response_line
 				version, status, reason = read_line.split(/\s+/, 3)
 				
@@ -349,10 +426,21 @@ module Protocol
 				return version, status, reason
 			end
 			
-			private def interim_status?(status)
+			# Indicates whether the status code is an interim status code.
+			#
+			# @parameter status [Integer] the status code.
+			# @returns [Boolean] whether the status code is an interim status code.
+			def interim_status?(status)
 				status != 101 and status >= 100 and status < 200
 			end
 			
+			# Read a response from the connection.
+			#
+			# @parameter method [String] the HTTP method.
+			# @yields {|version, status, reason, headers, body| ...} if a block is given.
+			# @returns [Tuple(String, Integer, String, HTTP::Headers, Protocol::HTTP1::Body)] the version, status, reason, headers, and body of the response.
+			# @raises [ProtocolError] if the connection is not in the open or half-closed local state.
+			# @raises [EOFError] if the connection is closed.
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
 					raise ProtocolError, "Cannot read response in state: #{@state}!"
@@ -383,6 +471,11 @@ module Protocol
 				end
 			end
 			
+			# Read headers from the connection until an empty line is encountered.
+			#
+			# @returns [HTTP::Headers] the headers read.
+			# @raises [EOFError] if the connection is closed.
+			# @raises [BadHeader] if a header could not be parsed.
 			def read_headers
 				fields = []
 				
@@ -400,6 +493,11 @@ module Protocol
 				return HTTP::Headers.new(fields)
 			end
 			
+			# Transition to the half-closed local state, in other words, the connection is closed for writing.
+			#
+			# If the connection is already in the half-closed remote state, it will transition to the closed state.
+			#
+			# @raises [ProtocolError] if the connection is not in the open state.
 			def send_end_stream!
 				if @state == :open
 					@state = :half_closed_local
@@ -410,7 +508,15 @@ module Protocol
 				end
 			end
 			
-			# @param protocol [String] the protocol to upgrade to.
+			# Write an upgrade body to the connection.
+			#
+			# This writes the upgrade header and the body to the connection. If the body is `nil`, you should coordinate writing to the stream.
+			#
+			# The connection will not be persistent after this method is called.
+			# 
+			# @parameter protocol [String] the protocol to upgrade to.
+			# @parameter body [Object | Nil] the body to write.
+			# @returns [IO] the underlying IO stream.
 			def write_upgrade_body(protocol, body = nil)
 				# Once we upgrade the connection, it can no longer handle other requests:
 				@persistent = false
@@ -434,6 +540,15 @@ module Protocol
 				self.send_end_stream!
 			end
 			
+			# Write a tunnel body to the connection.
+			#
+			# This writes the connection header and the body to the connection. If the body is `nil`, you should coordinate writing to the stream.
+			#
+			# The connection will not be persistent after this method is called.
+			#
+			# @parameter version [String] the HTTP version.
+			# @parameter body [Object | Nil] the body to write.
+			# @returns [IO] the underlying IO stream.
 			def write_tunnel_body(version, body = nil)
 				@persistent = false
 				
@@ -456,7 +571,12 @@ module Protocol
 				self.send_end_stream!
 			end
 			
-			def write_empty_body(body)
+			# Write an empty body to the connection.
+			#
+			# If given, the body will be closed.
+			#
+			# @parameter body [Object | Nil] the body to write.
+			def write_empty_body(body = nil)
 				@stream.write("content-length: 0\r\n\r\n")
 				@stream.flush
 				
@@ -465,6 +585,14 @@ module Protocol
 				self.send_end_stream!
 			end
 			
+			# Write a fixed length body to the connection.
+			#
+			# If the request was a `HEAD` request, the body will be closed, and no data will be written.
+			#
+			# @parameter body [Object] the body to write.
+			# @parameter length [Integer] the length of the body.
+			# @parameter head [Boolean] whether the request was a `HEAD` request.
+			# @raises [ContentLengthError] if the body length does not match the content length specified.
 			def write_fixed_length_body(body, length, head)
 				@stream.write("content-length: #{length}\r\n\r\n")
 				
@@ -499,6 +627,15 @@ module Protocol
 				self.send_end_stream!
 			end
 			
+			# Write a chunked body to the connection.
+			#
+			# If the request was a `HEAD` request, the body will be closed, and no data will be written.
+			#
+			# If trailers are given, they will be written after the body.
+			#
+			# @parameter body [Object] the body to write.
+			# @parameter head [Boolean] whether the request was a `HEAD` request.
+			# @parameter trailer [Hash | Nil] the trailers to write.
 			def write_chunked_body(body, head, trailer = nil)
 				@stream.write("transfer-encoding: chunked\r\n\r\n")
 				
@@ -535,6 +672,10 @@ module Protocol
 				self.send_end_stream!
 			end
 			
+			# Write the body to the connection and close the connection.
+			#
+			# @parameter body [Object] the body to write.
+			# @parameter head [Boolean] whether the request was a `HEAD` request.
 			def write_body_and_close(body, head)
 				# We can't be persistent because we don't know the data length:
 				@persistent = false
@@ -559,6 +700,10 @@ module Protocol
 			end
 			
 			# The connection (stream) was closed. It may now be in the idle state.
+			#
+			# Sub-classes may override this method to perform additional cleanup.
+			#
+			# @parameter error [Exception | Nil] the error that caused the connection to be closed, if any.
 			def closed(error = nil)
 			end
 			
@@ -578,6 +723,14 @@ module Protocol
 				self.closed(error)
 			end
 			
+			# Write a body to the connection.
+			#
+			# The behavior of this method is determined by the HTTP version, the body, and the request method. We try to choose the best approach possible, given the constraints, connection persistence, whether the length is known, etc.
+			#
+			# @parameter version [String] the HTTP version.
+			# @parameter body [Object] the body to write.
+			# @parameter head [Boolean] whether the request was a `HEAD` request.
+			# @parameter trailer [Hash | Nil] the trailers to write.
 			def write_body(version, body, head = false, trailer = nil)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
@@ -609,6 +762,11 @@ module Protocol
 				end
 			end
 			
+			# Indicate that the end of the stream (body) has been received.
+			#
+			# This will transition to the half-closed remote state if the connection is open, or the closed state if the connection is half-closed local.
+			#
+			# @raises [ProtocolError] if the connection is not in the open or half-closed remote state.
 			def receive_end_stream!
 				if @state == :open
 					@state = :half_closed_remote
@@ -619,19 +777,34 @@ module Protocol
 				end
 			end
 			
+			# Read the body, assuming it is using the chunked transfer encoding.
+			#
+			# @parameters headers [Hash] the headers of the request.
+			# @returns [Protocol::HTTP1::Body::Chunked] the body.
 			def read_chunked_body(headers)
 				Body::Chunked.new(self, headers)
 			end
 			
+			# Read the body, assuming it has a fixed length.
+			#
+			# @parameters length [Integer] the length of the body.
+			# @returns [Protocol::HTTP1::Body::Fixed] the body.
 			def read_fixed_body(length)
 				Body::Fixed.new(self, length)
 			end
 			
+			# Read the body, assuming that we read until the connection is closed.
+			#
+			# @returns [Protocol::HTTP1::Body::Remainder] the body.
 			def read_remainder_body
 				@persistent = false
 				Body::Remainder.new(self)
 			end
 			
+			# Read the body, assuming that we are not receiving any actual data, but just the length.
+			#
+			# @parameters length [Integer] the length of the body.
+			# @returns [Protocol::HTTP::Body::Head] the body.
 			def read_head_body(length)
 				# We are not receiving any body:
 				self.receive_end_stream!
@@ -639,21 +812,41 @@ module Protocol
 				Protocol::HTTP::Body::Head.new(length)
 			end
 			
+			# Read the body, assuming it is a tunnel.
+			#
+			# Invokes {read_remainder_body}.
+			#
+			# @returns [Protocol::HTTP::Body::Remainder] the body.
 			def read_tunnel_body
 				read_remainder_body
 			end
 			
+			# Read the body, assuming it is an upgrade.
+			#
+			# Invokes {read_remainder_body}.
+			#
+			# @returns [Protocol::HTTP::Body::Remainder] the body.
 			def read_upgrade_body
 				# When you have an incoming upgrade request body, we must be extremely careful not to start reading it until the upgrade has been confirmed, otherwise if the upgrade was rejected and we started forwarding the incoming request body, it would desynchronize the connection (potential security issue).
 				# We mitigate this issue by setting @persistent to false, which will prevent the connection from being reused, even if the upgrade fails (potential performance issue).
 				read_remainder_body
 			end
 			
+			# The HTTP `HEAD` method.
 			HEAD = "HEAD"
+			
+			# The HTTP `CONNECT` method.
 			CONNECT = "CONNECT"
 			
+			# The pattern for valid content length values.
 			VALID_CONTENT_LENGTH = /\A\d+\z/
 			
+			# Extract the content length from the headers, if possible.
+			#
+			# @parameter headers [Hash] the headers.
+			# @yields {|length| ...} if a content length is found.
+			# 	@parameter length [Integer] the content length.
+			# @raises [BadRequest] if the content length is invalid.
 			def extract_content_length(headers)
 				if content_length = headers.delete(CONTENT_LENGTH)
 					if content_length =~ VALID_CONTENT_LENGTH
@@ -664,6 +857,17 @@ module Protocol
 				end
 			end
 			
+			# Read the body of the response.
+			#
+			# - The `HEAD` method is used to retrieve the headers of the response without the body, so {read_head_body} is invoked if there is a content length, otherwise nil is returned.
+			# - A 101 status code indicates that the connection will be upgraded, so {read_upgrade_body} is invoked.
+			# - Interim status codes (1xx), no content (204) and not modified (304) status codes do not have a body, so nil is returned.
+			# - The `CONNECT` method is used to establish a tunnel, so {read_tunnel_body} is invoked.
+			# - Otherwise, the body is read according to {read_body}.
+			#
+			# @parameter method [String] the HTTP method.
+			# @parameter status [Integer] the HTTP status code.
+			# @parameter headers [Hash] the headers of the response.
 			def read_response_body(method, status, headers)
 				# RFC 7230 3.3.3
 				# 1.  Any response to a HEAD request and any response with a 1xx
@@ -704,6 +908,14 @@ module Protocol
 				return read_body(headers, true)
 			end
 			
+			# Read the body of the request.
+			#
+			# - The `CONNECT` method is used to establish a tunnel, so the body is read until the connection is closed.
+			# - The `UPGRADE` method is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed.
+			# - Otherwise, the body is read according to {read_body}.
+			#
+			# @parameter method [String] the HTTP method.
+			# @parameter headers [Hash] the headers of the request.
 			def read_request_body(method, headers)
 				# 2.  Any 2xx (Successful) response to a CONNECT request implies that
 				# the connection will become a tunnel immediately after the empty
@@ -724,6 +936,14 @@ module Protocol
 				return read_body(headers)
 			end
 			
+			# Read the body of the message.
+			#
+			# - The `transfer-encoding` header is used to determine if the body is chunked.
+			# - Otherwise, if the `content-length` is present, the body is read until the content length is reached.
+			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
+			#
+			# @parameter headers [Hash] the headers of the message.
+			# @parameter remainder [Boolean] whether to read the remainder of the body.
 			def read_body(headers, remainder = false)
 				# 3.  If a Transfer-Encoding header field is present and the chunked
 				# transfer coding (Section 4.1) is the final encoding, the message

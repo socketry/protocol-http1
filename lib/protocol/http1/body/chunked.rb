@@ -9,9 +9,16 @@ require "protocol/http/body/readable"
 module Protocol
 	module HTTP1
 		module Body
+			# Represents a chunked body, which is a series of chunks, each with a length prefix.
+			#
+			# See https://tools.ietf.org/html/rfc7230#section-4.1 for more details on the chunked transfer encoding.
 			class Chunked < HTTP::Body::Readable
 				CRLF = "\r\n"
 				
+				# Initialize the chunked body.
+				#
+				# @parameter connection [Protocol::HTTP1::Connection] the connection to read the body from.
+				# @parameter headers [Protocol::HTTP::Headers] the headers to read the trailer into, if any.
 				def initialize(connection, headers)
 					@connection = connection
 					@finished = false
@@ -22,19 +29,25 @@ module Protocol
 					@count = 0
 				end
 				
+				# @attribute [Integer] the number of chunks read so far.
 				attr :count
 				
+				# @attribute [Integer] the length of the body if known.
 				def length
-					# We only know the length once we've read everything. This is because the length is not known until the final chunk is read.
+					# We only know the length once we've read the final chunk:
 					if @finished
 						@length
 					end
 				end
 				
+				# @returns [Boolean] true if the body is empty, in other words {read} will return `nil`.
 				def empty?
 					@connection.nil?
 				end
 				
+				# Close the connection and mark the body as finished.
+				#
+				# @parameter error [Exception | Nil] the error that caused the body to be closed, if any.
 				def close(error = nil)
 					if connection = @connection
 						@connection = nil
@@ -49,7 +62,12 @@ module Protocol
 				
 				VALID_CHUNK_LENGTH = /\A[0-9a-fA-F]+\z/
 				
+				# Read a chunk of data.
+				#
 				# Follows the procedure outlined in https://tools.ietf.org/html/rfc7230#section-4.1.3
+				#
+				# @returns [String | Nil] the next chunk of data, or `nil` if the body is finished.
+				# @raises [EOFError] if the connection is closed before the expected length is read.
 				def read
 					if !@finished
 						if @connection
@@ -96,12 +114,14 @@ module Protocol
 					end
 				end
 				
+				# @returns [String] a human-readable representation of the body.
 				def inspect
 					"\#<#{self.class} #{@length} bytes read in #{@count} chunks>"
 				end
 				
 				private
 				
+				# Read the trailer from the connection, and add any headers to the trailer.
 				def read_trailer
 					while line = @connection.read_line?
 						# Empty line indicates end of trailer:

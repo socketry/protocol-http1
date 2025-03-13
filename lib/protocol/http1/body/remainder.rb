@@ -8,19 +8,24 @@ require "protocol/http/body/readable"
 module Protocol
 	module HTTP1
 		module Body
-			# A body that reads all remaining data from the connection.
+			# Represents the remainder of the body, which reads all the data from the connection until it is finished.
 			class Remainder < HTTP::Body::Readable
 				BLOCK_SIZE = 1024 * 64
 				
-				# block_size may be removed in the future. It is better managed by connection.
-				def initialize(connection)
+				# Initialize the body with the given connection.
+				#
+				# @parameter connection [Protocol::HTTP1::Connection] the connection to read the body from.
+				def initialize(connection, block_size: BLOCK_SIZE)
 					@connection = connection
+					@block_size = block_size
 				end
 				
+				# @returns [Boolean] true if the body is empty.
 				def empty?
 					@connection.nil?
 				end
 				
+				# Discard the body, which will close the connection and prevent further reads.
 				def discard
 					if connection = @connection
 						@connection = nil
@@ -30,14 +35,20 @@ module Protocol
 					end
 				end
 				
+				# Close the connection.
+				#
+				# @parameter error [Exception | Nil] the error that caused the connection to be closed, if any.
 				def close(error = nil)
 					self.discard
 					
 					super
 				end
 				
+				# Read a chunk of data.
+				#
+				# @returns [String | Nil] the next chunk of data.
 				def read
-					@connection&.readpartial(BLOCK_SIZE)
+					@connection&.readpartial(@block_size)
 				rescue EOFError
 					if connection = @connection
 						@connection = nil
@@ -47,6 +58,7 @@ module Protocol
 					return nil
 				end
 				
+				# @returns [String] a human-readable representation of the body.
 				def inspect
 					"\#<#{self.class} state=#{@connection ? 'open' : 'closed'}>"
 				end

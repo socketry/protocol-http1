@@ -5,3 +5,10 @@
 
 require_relative "http1/version"
 require_relative "http1/connection"
+
+# @namespace
+module Protocol
+	# @namespace
+	module HTTP1
+	end
+end

@@ -8,7 +8,12 @@ require "protocol/http/body/readable"
 module Protocol
 	module HTTP1
 		module Body
+			# Represents a fixed length body.
 			class Fixed < HTTP::Body::Readable
+				# Initialize the body with the given connection and length.
+				#
+				# @parameter connection [Protocol::HTTP1::Connection] the connection to read the body from.
+				# @parameter length [Integer] the length of the body.
 				def initialize(connection, length)
 					@connection = connection
 					
@@ -16,13 +21,20 @@ module Protocol
 					@remaining = length
 				end
 				
+				# @attribute [Integer] the length of the body.
 				attr :length
+				
+				# @attribute [Integer] the remaining bytes to read.
 				attr :remaining
 				
+				# @returns [Boolean] true if the body is empty.
 				def empty?
 					@connection.nil? or @remaining == 0
 				end
 				
+				# Close the connection.
+				#
+				# @parameter error [Exception | Nil] the error that caused the connection to be closed, if any.
 				def close(error = nil)
 					if connection = @connection
 						@connection = nil
@@ -35,7 +47,10 @@ module Protocol
 					super
 				end
 				
-				# @raises EOFError if the connection is closed before the expected length is read.
+				# Read a chunk of data.
+				#
+				# @returns [String | Nil] the next chunk of data.
+				# @raises [EOFError] if the connection is closed before the expected length is read.
 				def read
 					if @remaining > 0
 						if @connection
@@ -57,6 +72,7 @@ module Protocol
 					end
 				end
 				
+				# @returns [String] a human-readable representation of the body.
 				def inspect
 					"\#<#{self.class} length=#{@length} remaining=#{@remaining} state=#{@connection ? 'open' : 'closed'}>"
 				end

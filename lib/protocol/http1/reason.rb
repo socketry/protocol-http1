@@ -7,7 +7,9 @@ require "protocol/http/error"
 
 module Protocol
 	module HTTP1
+		# Reason phrases for HTTP status codes.
 		module Reason
+			# Get the reason phrase for the given status code.
 			DESCRIPTIONS = {
 				100 => "Continue",
 				101 => "Switching Protocols",

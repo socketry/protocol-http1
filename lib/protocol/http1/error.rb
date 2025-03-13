@@ -7,6 +7,7 @@ require "protocol/http/error"
 
 module Protocol
 	module HTTP1
+		# The base class for all HTTP/1.x errors.
 		class Error < HTTP::Error
 		end
 		
@@ -14,6 +15,7 @@ module Protocol
 		class ProtocolError < Error
 		end
 		
+		# The request line was too long.
 		class LineLengthError < Error
 		end
 		
