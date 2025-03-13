@@ -46,13 +46,14 @@ module Protocol
 		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
 		
 		DEFAULT_MAXIMUM_LINE_LENGTH = 8192
+		MAXIMUM_HEADER_COUNT = 128
 		
 		class Connection
 			CRLF = "\r\n"
 			HTTP10 = "HTTP/1.0"
 			HTTP11 = "HTTP/1.1"
 			
-			def initialize(stream, persistent: true, state: :idle, maximum_line_length: DEFAULT_MAXIMUM_LINE_LENGTH)
+			def initialize(stream, persistent: true, state: :idle, maximum_line_length: DEFAULT_MAXIMUM_LINE_LENGTH, maximum_header_count: MAXIMUM_HEADER_COUNT)
 				@stream = stream
 				
 				@persistent = persistent
@@ -61,6 +62,7 @@ module Protocol
 				@count = 0
 				
 				@maximum_line_length = maximum_line_length
+				@maximum_header_count = maximum_header_count
 			end
 			
 			attr :stream
@@ -381,6 +383,10 @@ module Protocol
 				fields = []
 				
 				while line = read_line
+					if @maximum_header_count and fields.size > @maximum_header_count
+						raise HeaderCountError, "Too many headers: #{fields.size} > #{@maximum_header_count}!"
+					end
+					
 					# Empty line indicates end of headers:
 					break if line.empty?
 					

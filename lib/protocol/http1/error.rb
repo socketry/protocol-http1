@@ -17,6 +17,9 @@ module Protocol
 		class LineLengthError < Error
 		end
 		
+		class HeaderCountError < Error
+		end
+		
 		# The request was not able to be parsed correctly, or failed some kind of validation.
 		class BadRequest < Error
 		end
