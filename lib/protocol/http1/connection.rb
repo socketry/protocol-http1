@@ -148,7 +148,7 @@ module Protocol
 					else
 						return false
 					end
-				else
+				else # HTTP/1.1+
 					if connection = headers[CONNECTION]
 						return !connection.close?
 					else
@@ -362,7 +362,9 @@ module Protocol
 				
 				headers = read_headers
 				
-				@persistent = persistent?(version, method, headers)
+				if @persistent
+					@persistent = persistent?(version, method, headers)
+				end
 				
 				unless interim_status?(status)
 					body = read_response_body(method, status, headers)
