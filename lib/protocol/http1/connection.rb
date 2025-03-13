@@ -944,6 +944,7 @@ module Protocol
 			#
 			# @parameter headers [Hash] the headers of the message.
 			# @parameter remainder [Boolean] whether to read the remainder of the body.
+			# @returns [Object] the body.
 			def read_body(headers, remainder = false)
 				# 3.  If a Transfer-Encoding header field is present and the chunked
 				# transfer coding (Section 4.1) is the final encoding, the message
