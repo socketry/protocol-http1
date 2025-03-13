@@ -30,6 +30,8 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body).to be_nil
+			
+			expect(server).to be(:persistent)
 		end
 		
 		it "reads request without body after closing connection" do
@@ -44,6 +46,8 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {"accept" => ["*/*"], "header-0" => ["value 1"]}
 			expect(body).to be_nil
+			
+			expect(server).to be(:persistent)
 		end
 		
 		it "reads request with fixed body" do
@@ -58,6 +62,8 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body.join).to be == "Hello World"
+			
+			expect(server).to be(:persistent)
 		end
 		
 		it "reads request with chunked body" do
@@ -72,7 +78,9 @@ describe Protocol::HTTP1::Connection do
 			expect(version).to be == "HTTP/1.1"
 			expect(headers).to be == {}
 			expect(body.join).to be == "Hello World"
+			
 			expect(server).to be(:persistent?, version, method, headers)
+			expect(server).to be(:persistent)
 		end
 		
 		it "reads request with CONNECT method" do
