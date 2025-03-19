@@ -40,8 +40,8 @@ module Protocol
 		WS = /[ \t]/ # Whitespace.
 		OWS = /#{WS}*/ # Optional whitespace.
 		VCHAR = /[!-~]/ # Match visible characters from ASCII 33 to 126.
-		FIELD_VALUE = /(?:#{VCHAR}+(?:#{WS}+#{VCHAR})*)*/.freeze
-		HEADER = /\A(#{FIELD_NAME}):#{OWS}(#{FIELD_VALUE})#{OWS}\z/.freeze
+		FIELD_VALUE = /#{VCHAR}+(?:#{WS}+#{VCHAR}+)*/.freeze
+		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:(#{FIELD_VALUE})#{OWS})?\z/.freeze
 		
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
 		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
@@ -487,7 +487,7 @@ module Protocol
 					break if line.empty?
 					
 					if match = line.match(HEADER)
-						fields << [match[1], match[2]]
+						fields << [match[1], match[2] || ""]
 					else
 						raise BadHeader, "Could not parse header: #{line.inspect}"
 					end
