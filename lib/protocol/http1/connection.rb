@@ -37,10 +37,9 @@ module Protocol
 		
 		# HTTP/1.x header parser:
 		FIELD_NAME = TOKEN
-		WS = /[ \t]/ # Whitespace.
-		OWS = /#{WS}*/ # Optional whitespace.
-		VCHAR = /[!-~]/ # Match visible characters from ASCII 33 to 126.
-		FIELD_VALUE = /#{VCHAR}+(?:#{WS}+#{VCHAR}+)*/.freeze
+		OWS = /[ \t]*/
+		# A field value is any string of characters that does not contain a null character, CR, or LF. After reflecting on the RFCs and surveying real implementations, I came to the conclusion that the RFCs are too restrictive. Most servers only check for the presence of null bytes, and obviously CR/LF characters have semantic meaning in the parser. So, I decided to follow this defacto standard, even if I'm not entirely happy with it.
+		FIELD_VALUE = /[^\0\r\n]+/.freeze
 		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:(#{FIELD_VALUE})#{OWS})?\z/.freeze
 		
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze

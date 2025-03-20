@@ -59,6 +59,20 @@ describe Protocol::HTTP1::Connection do
 			"user-agent: Mozilla\x7FHacker Browser"
 		]}
 
+		it "allows the request" do
+			authority, method, target, version, headers, body = server.read_request
+
+			expect(headers).to have_keys(
+				"user-agent" => be == "Mozilla\x7FHacker Browser"
+			)
+		end
+	end
+
+	with "header that contains null character" do
+		let(:headers) {[
+			"user-agent: Mozilla\x00Hacker Browser"
+		]}
+
 		it "rejects the request" do
 			expect do
 				server.read_request
