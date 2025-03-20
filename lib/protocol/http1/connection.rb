@@ -43,7 +43,7 @@ module Protocol
 		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:(#{FIELD_VALUE})#{OWS})?\z/.freeze
 		
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
-		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
+		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}?\z/.freeze
 		
 		DEFAULT_MAXIMUM_LINE_LENGTH = 8192
 		
