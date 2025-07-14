@@ -738,5 +738,39 @@ describe Protocol::HTTP1::Connection do
 			server.close(error)
 			expect(server).to be(:closed?)
 		end
+		
+		it "can close the body before client is closed" do
+			client.open!
+			
+			# Simulate a CONNECT request, which yields a Body::Remainder:
+			server.stream.write("HTTP/1.1 200 Connection Established\r\n\r\n")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("CONNECT")
+			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
+			
+			# Close the body before closing the client:
+			body.close
+			
+			# Now, close the client:
+			client.close
+		end
+		
+		it "allows closing remainder body after client is closed" do
+			client.open!
+			
+			# Simulate a CONNECT request, which yields a Body::Remainder:
+			server.stream.write("HTTP/1.1 200 Connection Established\r\n\r\n")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("CONNECT")
+			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
+			
+			# Close the client before reading/closing the body:
+			client.close
+			
+			# Now, close the body, which should not raise:
+			body.close
+		end
 	end
 end

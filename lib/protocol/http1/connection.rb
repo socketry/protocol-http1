@@ -214,9 +214,11 @@ module Protocol
 			
 			# Close the read end of the connection and transition to the half-closed remote state (or closed if already in the half-closed local state).
 			def close_read
-				@persistent = false
-				@stream&.close_read
-				self.receive_end_stream!
+				unless @state == :closed
+					@persistent = false
+					@stream&.close_read
+					self.receive_end_stream!
+				end
 			end
 			
 			# Close the connection and underlying stream and transition to the closed state.
