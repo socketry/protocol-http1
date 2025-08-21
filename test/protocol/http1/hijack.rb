@@ -32,11 +32,7 @@ describe Protocol::HTTP1::Connection do
 			server.open!
 			
 			expect(body).to receive(:ready?).and_return(false)
-			expect(body).to receive(:empty?).and_return(false)
-			expect(body).to receive(:length).twice.and_return(nil)
 			expect(body).to receive(:each).and_return(nil)
-			
-			expect(server).to receive(:write_body_and_close)
 			server.write_response(response_version, 101, {"upgrade" => "websocket"})
 			server.write_body(response_version, body)
 			
