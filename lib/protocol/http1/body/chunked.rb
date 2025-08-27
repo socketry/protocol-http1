@@ -116,7 +116,16 @@ module Protocol
 				
 				# @returns [String] a human-readable representation of the body.
 				def inspect
-					"\#<#{self.class} #{@length} bytes read in #{@count} chunks>"
+					"\#<#{self.class} #{@length} bytes read in #{@count} chunks, #{@finished ? 'finished' : 'reading'}>"
+				end
+				
+				# @returns [Hash] JSON representation for tracing and debugging.
+				def as_json(...)
+					super.merge(
+						count: @count,
+						finished: @finished,
+						state: @connection ? "open" : "closed"
+					)
 				end
 				
 				private

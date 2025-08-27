@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+  - Add traces provider for `Protocol::HTTP1::Connection`.
+
 ## v0.34.1
 
 - Fix connection state handling to allow idempotent response body closing.

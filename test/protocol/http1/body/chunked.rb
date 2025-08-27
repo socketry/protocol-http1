@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2024, by Samuel Williams.
+# Copyright, 2019-2025, by Samuel Williams.
 
 require "protocol/http1/body/chunked"
 require "connection_context"
@@ -16,7 +16,34 @@ describe Protocol::HTTP1::Body::Chunked do
 	
 	with "#inspect" do
 		it "can be inspected" do
-			expect(body.inspect).to be =~ /0 bytes read in 0 chunks/
+			expect(body.inspect).to be =~ /0 bytes read in 0 chunks, reading/
+		end
+	end
+	
+	with "#as_json" do
+		it "returns JSON representation" do
+			expect(body.as_json).to have_keys(
+				class: be == "Protocol::HTTP1::Body::Chunked",
+				length: be_nil, # Not finished yet
+				stream: be == false,
+				ready: be == false,
+				empty: be == false,
+				count: be == 0,
+				finished: be == false,
+				state: be == "open"
+			)
+		end
+		
+		it "shows finished state after reading all chunks" do
+			body.read # Read the chunk
+			body.read # Read the end (returns nil)
+			expect(body.as_json).to have_keys(
+				length: be == 11,
+				count: be == 1,
+				finished: be == true,
+				empty: be == true,
+				state: be == "closed"
+			)
 		end
 	end
 	

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2024, by Samuel Williams.
+# Copyright, 2019-2025, by Samuel Williams.
 
 require "protocol/http1/body/fixed"
 require "protocol/http1/connection"
@@ -14,7 +14,30 @@ describe Protocol::HTTP1::Body::Fixed do
 	
 	with "#inspect" do
 		it "can be inspected" do
-			expect(body.inspect).to be =~ /length=11 remaining=11/
+			expect(body.inspect).to be =~ /11 bytes, 11 remaining, reading/
+		end
+	end
+	
+	with "#as_json" do
+		it "returns JSON representation" do
+			expect(body.as_json).to have_keys(
+				class: be == "Protocol::HTTP1::Body::Fixed",
+				length: be == 11,
+				stream: be == false,
+				ready: be == false,
+				empty: be == false,
+				remaining: be == 11,
+				state: be == "open"
+			)
+		end
+		
+		it "shows finished state when empty" do
+			body.read # Read all data
+			expect(body.as_json).to have_keys(
+				remaining: be == 0,
+				empty: be == true,
+				state: be == "closed"
+			)
 		end
 	end
 	

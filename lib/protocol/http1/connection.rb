@@ -274,7 +274,9 @@ module Protocol
 			# @parameter status [Integer] the HTTP status code.
 			# @parameter headers [Hash] the HTTP headers.
 			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
-			def write_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
+			def write_response(version, status, headers, reason = nil)
+				reason ||= Reason::DESCRIPTIONS[status]
+				
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write response in state: #{@state}!"
 				end
@@ -292,7 +294,9 @@ module Protocol
 			# @parameter headers [Hash] the HTTP headers.
 			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
 			# @raises [ProtocolError] if the connection is not in the open or half-closed remote state.
-			def write_interim_response(version, status, headers, reason = Reason::DESCRIPTIONS[status])
+			def write_interim_response(version, status, headers, reason = nil)
+				reason ||= Reason::DESCRIPTIONS[status]
+				
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write interim response in state: #{@state}!"
 				end

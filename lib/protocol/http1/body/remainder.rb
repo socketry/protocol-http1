@@ -60,7 +60,15 @@ module Protocol
 				
 				# @returns [String] a human-readable representation of the body.
 				def inspect
-					"\#<#{self.class} state=#{@connection ? 'open' : 'closed'}>"
+					"#<#{self.class} #{@block_size} byte blocks, #{empty? ? 'finished' : 'reading'}>"
+				end
+				
+				# @returns [Hash] JSON representation for tracing and debugging.
+				def as_json(...)
+					super.merge(
+						block_size: @block_size,
+						state: @connection ? "open" : "closed"
+					)
 				end
 			end
 		end

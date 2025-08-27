@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2024, by Samuel Williams.
+# Copyright, 2019-2025, by Samuel Williams.
 
 require "protocol/http1/body/remainder"
 require "protocol/http1/connection"
@@ -14,7 +14,31 @@ describe Protocol::HTTP1::Body::Remainder do
 	
 	with "#inspect" do
 		it "can be inspected" do
-			expect(body.inspect).to be =~ /open/
+			expect(body.inspect).to be =~ /reading/
+		end
+	end
+	
+	with "#as_json" do
+		it "returns JSON representation" do
+			expect(body.as_json).to have_keys(
+				class: be == "Protocol::HTTP1::Body::Remainder",
+				length: be_nil,
+				stream: be == false,
+				ready: be == false,
+				empty: be == false,
+				block_size: be == 65536,
+				state: be == "open"
+			)
+		end
+		
+		it "shows finished state after reading all data" do
+			body.read # Read all available data (this will read until EOF and close connection)
+			# Need to read again to trigger the EOF handling that closes the connection
+			body.read # This returns nil and sets @connection = nil
+			expect(body.as_json).to have_keys(
+				empty: be == true,
+				state: be == "closed"
+			)
 		end
 	end
 	
