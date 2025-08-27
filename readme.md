@@ -22,46 +22,55 @@ Or install it yourself as:
 
 ## Usage
 
-Here is a basic HTTP/1.1 client:
+Please see the [project documentation](https://socketry.github.io/protocol-http1/) for more details.
 
-``` ruby
-require 'async'
-require 'async/io/stream'
-require 'async/http/endpoint'
-require 'protocol/http1/connection'
-
-Async do
-	endpoint = Async::HTTP::Endpoint.parse("https://www.google.com/search?q=kittens", alpn_protocols: ["http/1.1"])
-	
-	peer = endpoint.connect
-	
-	puts "Connected to #{peer} #{peer.remote_address.inspect}"
-	
-	# IO Buffering...
-	stream = Async::IO::Stream.new(peer)
-	client = Protocol::HTTP1::Connection.new(stream)
-	
-	def client.read_line
-		@stream.read_until(Protocol::HTTP1::Connection::CRLF) or raise EOFError
-	end
-	
-	puts "Writing request..."
-	client.write_request("www.google.com", "GET", "/search?q=kittens", "HTTP/1.1", [["Accept", "*/*"]])
-	client.write_body(nil)
-	
-	puts "Reading response..."
-	response = client.read_response("GET")
-	
-	puts "Got response: #{response.inspect}"
-	
-	puts "Closing client..."
-	client.close
-end
-```
+  - [Getting Started](https://socketry.github.io/protocol-http1/guides/getting-started/index) - This guide explains how to get started with `protocol-http1`, a low-level implementation of the HTTP/1 protocol for building HTTP clients and servers.
 
 ## Releases
 
-There are no documented releases.
+Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
+
+### Unreleased
+
+  - Add traces provider for `Protocol::HTTP1::Connection`.
+
+### v0.34.1
+
+  - Fix connection state handling to allow idempotent response body closing.
+  - Add `kisaten` fuzzing integration for improved security testing.
+
+### v0.34.0
+
+  - Support empty header values in HTTP parsing for better compatibility.
+
+### v0.33.0
+
+  - Support high-byte characters in HTTP headers for improved international compatibility.
+
+### v0.32.0
+
+  - Fix header parsing to handle tab characters between values correctly.
+  - Complete documentation coverage for all public APIs.
+
+### v0.31.0
+
+  - Enforce one-way transition for persistent connections to prevent invalid state changes.
+
+### v0.30.0
+
+  - Make `authority` header optional in HTTP requests for improved flexibility.
+
+### v0.29.0
+
+  - Add block/yield interface to `read_request` and `read_response` methods.
+
+### v0.28.1
+
+  - Fix handling of `nil` lines in HTTP parsing.
+
+### v0.28.0
+
+  - Add configurable maximum line length to prevent denial of service attacks.
 
 ## Contributing
 
