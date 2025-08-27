@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## v0.35.0
 
   - Add traces provider for `Protocol::HTTP1::Connection`.
 

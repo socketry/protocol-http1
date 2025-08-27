@@ -30,7 +30,7 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
-### Unreleased
+### v0.35.0
 
   - Add traces provider for `Protocol::HTTP1::Connection`.
 
