@@ -24,7 +24,7 @@ Async do
 	3.times do
 		client.write_request("localhost", "GET", "/", "HTTP/1.1", [["Accept", "*/*"]])
 		client.write_body("HTTP/1.1", nil)
-	
+		
 		puts "Reading response..."
 		response = client.read_response("GET")
 		version, status, reason, headers, body = response

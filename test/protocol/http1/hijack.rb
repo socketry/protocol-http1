@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2024, by Samuel Williams.
+# Copyright, 2019-2025, by Samuel Williams.
 # Copyright, 2024, by Anton Zhuravsky.
 # Copyright, 2024, by Thomas Morgan.
 
@@ -21,7 +21,7 @@ describe Protocol::HTTP1::Connection do
 			server_wrapper = server.hijack!
 			expect(server.persistent).to be == false
 		end
-
+		
 		it "should repord itself as #hijacked? after the hijack" do
 			expect(server.hijacked?).to be == false
 			server.hijack!

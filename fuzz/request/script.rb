@@ -14,7 +14,7 @@ def test
 	
 	# input.write($stdin.read)
 	# input.close
-
+	
 	begin
 		host, method, path, version, headers, body = server.read_request
 		

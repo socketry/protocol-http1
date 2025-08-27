@@ -59,6 +59,10 @@ Async do
 end
 ```
 
+## Releases
+
+There are no documented releases.
+
 ## Contributing
 
 We welcome contributions to this project.

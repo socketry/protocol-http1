@@ -148,7 +148,7 @@ describe Protocol::HTTP1::Connection do
 				'foo\nbar',
 				'foo\rbar',
 			]
-				
+			
 			invalid_header_names.each do |name|
 				expect(name).not.to be =~ Protocol::HTTP1::VALID_FIELD_NAME
 				
@@ -175,7 +175,7 @@ describe Protocol::HTTP1::Connection do
 			it "should not be persistent by default" do
 				expect(server).not.to be(:persistent?, "HTTP/1.0", "GET", {})
 			end
-
+			
 			it "should be persistent if connection: keep-alive is set" do
 				headers = Protocol::HTTP::Headers[
 					"connection" => "keep-alive"
@@ -183,7 +183,7 @@ describe Protocol::HTTP1::Connection do
 				
 				expect(server).to be(:persistent?, "HTTP/1.0", "GET", headers)
 			end
-
+			
 			it "should allow case-insensitive 'connection' value" do
 				headers = Protocol::HTTP::Headers[
 					"connection" => "Keep-Alive"
@@ -192,12 +192,12 @@ describe Protocol::HTTP1::Connection do
 				expect(server).to be(:persistent?, "HTTP/1.0", "GET", headers)
 			end
 		end
-
+		
 		describe "HTTP 1.1" do
 			it "should be persistent by default" do
 				expect(server).to be(:persistent?, "HTTP/1.1", "GET", {})
 			end
-
+			
 			it "should not be persistent if connection: close is set" do
 				headers = Protocol::HTTP::Headers[
 					"connection" => "close"
@@ -205,7 +205,7 @@ describe Protocol::HTTP1::Connection do
 				
 				expect(server).not.to be(:persistent?, "HTTP/1.1", "GET", headers)
 			end
-
+			
 			it "should allow case-insensitive 'connection' value" do
 				headers = Protocol::HTTP::Headers[
 					"connection" => "Close"
