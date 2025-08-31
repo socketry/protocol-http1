@@ -29,4 +29,5 @@ group :test do
 	gem "bake-test-external"
 	
 	gem "stringio"
+	gem "traces"
 end
