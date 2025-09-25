@@ -349,7 +349,7 @@ module Protocol
 			
 			# Read a line from the connection.
 			#
-			# @returns [String | Nil] the line read, or nil if the connection is gracefully closed.
+			# @returns [String | Nil] the line read, or nil if the connection is closed.
 			# @raises [LineLengthError] if the line is too long.
 			# @raises [ProtocolError] if the line is not terminated properly.
 			def read_line?
@@ -366,8 +366,9 @@ module Protocol
 				end
 				
 				return line
-				
-				# I considered rescuing Errno::ECONNRESET here, but it seems like that would be ignoring a potentially serious error.
+			# If a connection is shut down abruptly, we treat it as EOF, but only specifically in `read_line?`.
+			rescue Errno::ECONNRESET
+				return nil
 			end
 			
 			# Read a line from the connection.
