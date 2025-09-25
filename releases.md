@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
+
 ## v0.35.0
 
   - Add traces provider for `Protocol::HTTP1::Connection`.

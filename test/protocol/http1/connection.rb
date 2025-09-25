@@ -15,6 +15,41 @@ require "connection_context"
 describe Protocol::HTTP1::Connection do
 	include_context ConnectionContext
 	
+	with "#read_line?" do
+		it "reads a line from the stream" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+			client.stream.close
+			
+			expect(server.read_line?).to be == "GET / HTTP/1.1"
+			expect(server.read_line?).to be == "Host: localhost"
+			expect(server.read_line?).to be == ""
+			expect(server.read_line?).to be_nil
+		end
+		
+		it "raises LineLengthError if line is too long" do
+			# We create a thread since the write is liable to block until we try to read:
+			thread = Thread.new do
+				client.stream.write "GET / HTTP/1.#{"1" * 10000}"
+				client.stream.close
+			end
+			
+			expect do
+				server.read_line?
+			end.to raise_exception(Protocol::HTTP1::LineLengthError)
+		ensure
+			thread.join
+		end
+		
+		it "raises ProtocolError if line is not terminated properly" do
+			client.stream.write "GET / HTTP/1.1\r"
+			client.stream.close
+			
+			expect do
+				server.read_line?
+			end.to raise_exception(Protocol::HTTP1::ProtocolError)
+		end
+	end
+	
 	with "#read_request" do
 		it "reads request without body" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"

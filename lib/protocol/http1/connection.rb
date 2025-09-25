@@ -349,18 +349,25 @@ module Protocol
 			
 			# Read a line from the connection.
 			#
-			# @returns [String | Nil] the line read, or nil if the connection is closed.
-			# @raises [EOFError] if the connection is closed.
+			# @returns [String | Nil] the line read, or nil if the connection is gracefully closed.
 			# @raises [LineLengthError] if the line is too long.
+			# @raises [ProtocolError] if the line is not terminated properly.
 			def read_line?
 				if line = @stream.gets(CRLF, @maximum_line_length)
 					unless line.chomp!(CRLF)
-						# This basically means that the request line, response line, header, or chunked length line is too long.
-						raise LineLengthError, "Line too long!"
+						if line.bytesize == @maximum_line_length
+							# This basically means that the request line, response line, header, or chunked length line is too long:
+							raise LineLengthError, "Line too long!"
+						else
+							# This means the line was not terminated properly, which is a protocol violation:
+							raise ProtocolError, "Line not terminated properly!"
+						end
 					end
 				end
 				
 				return line
+				
+				# I considered rescuing Errno::ECONNRESET here, but it seems like that would be ignoring a potentially serious error.
 			end
 			
 			# Read a line from the connection.
