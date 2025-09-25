@@ -48,6 +48,12 @@ describe Protocol::HTTP1::Connection do
 				server.read_line?
 			end.to raise_exception(Protocol::HTTP1::ProtocolError)
 		end
+		
+		it "returns nil on Errno::ECONNRESET" do
+			expect(server.stream).to receive(:gets).and_raise(Errno::ECONNRESET)
+			
+			expect(server.read_line?).to be_nil
+		end
 	end
 	
 	with "#read_request" do

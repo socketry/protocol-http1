@@ -3,6 +3,7 @@
 ## Unreleased
 
   - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
+  - Improve error handling for unexpected connection closures (`Errno::ECONNRESET`) in `read_line?`.
 
 ## v0.35.0
 
