@@ -39,11 +39,11 @@ module Protocol
 		FIELD_NAME = TOKEN
 		OWS = /[ \t]*/
 		# A field value is any string of characters that does not contain a null character, CR, or LF. After reflecting on the RFCs and surveying real implementations, I came to the conclusion that the RFCs are too restrictive. Most servers only check for the presence of null bytes, and obviously CR/LF characters have semantic meaning in the parser. So, I decided to follow this defacto standard, even if I'm not entirely happy with it.
-		FIELD_VALUE = /[^\0\r\n]+/.freeze
-		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:(#{FIELD_VALUE})#{OWS})?\z/.freeze
+		FIELD_VALUE = /[^\0\r\n]*?/.freeze
+		HEADER = /\A(#{FIELD_NAME}):#{OWS}(#{FIELD_VALUE})#{OWS}\z/.freeze
 		
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
-		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}?\z/.freeze
+		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}\z/.freeze
 		
 		DEFAULT_MAXIMUM_LINE_LENGTH = 8192
 		
