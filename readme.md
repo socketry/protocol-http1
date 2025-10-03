@@ -30,6 +30,11 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.35.2
+
+  - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
+  - Improve error handling for unexpected connection closures (`Errno::ECONNRESET`) in `read_line?`.
+
 ### v0.35.0
 
   - Add traces provider for `Protocol::HTTP1::Connection`.
@@ -67,10 +72,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.28.1
 
   - Fix handling of `nil` lines in HTTP parsing.
-
-### v0.28.0
-
-  - Add configurable maximum line length to prevent denial of service attacks.
 
 ## Contributing
 
