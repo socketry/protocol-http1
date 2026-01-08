@@ -137,7 +137,7 @@ module Protocol
 						break if line.empty?
 						
 						if match = line.match(HEADER)
-							@headers.add(match[1], match[2])
+							@headers.add(match[1], match[2], trailer: true)
 						else
 							raise BadHeader, "Could not parse header: #{line.inspect}"
 						end

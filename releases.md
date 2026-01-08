@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Indicate trailers from chunked body for better validation by `Protocol::HTTP::Headers`.
+
 ## v0.35.2
 
   - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
