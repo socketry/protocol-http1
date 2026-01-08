@@ -9,7 +9,7 @@ Provides a low-level implementation of the HTTP/1 protocol.
 Add this line to your application's Gemfile:
 
 ``` ruby
-gem 'protocol-http1'
+gem "protocol-http1"
 ```
 
 And then execute:
