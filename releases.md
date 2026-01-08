@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## v0.36.0
 
   - Indicate trailers from chunked body for better validation by `Protocol::HTTP::Headers`.
 

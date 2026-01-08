@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.36.0
+
+  - Indicate trailers from chunked body for better validation by `Protocol::HTTP::Headers`.
+
 ### v0.35.2
 
   - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
@@ -68,10 +72,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.29.0
 
   - Add block/yield interface to `read_request` and `read_response` methods.
-
-### v0.28.1
-
-  - Fix handling of `nil` lines in HTTP parsing.
 
 ## Contributing
 
