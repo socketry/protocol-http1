@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.37.0
+
+  - `Protocol::HTTP1::BadRequest` now includes `Protocol::HTTP::BadRequest` for better interoperability and handling of bad request errors across different HTTP protocol implementations.
+
 ### v0.36.0
 
   - Indicate trailers from chunked body for better validation by `Protocol::HTTP::Headers`.
@@ -68,10 +72,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.30.0
 
   - Make `authority` header optional in HTTP requests for improved flexibility.
-
-### v0.29.0
-
-  - Add block/yield interface to `read_request` and `read_response` methods.
 
 ## Contributing
 
