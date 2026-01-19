@@ -21,6 +21,7 @@ module Protocol
 		
 		# The request was not able to be parsed correctly, or failed some kind of validation.
 		class BadRequest < Error
+			include Protocol::HTTP::BadRequest
 		end
 		
 		# A header name or value was invalid, e.g. contains invalid characters.

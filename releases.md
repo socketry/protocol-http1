@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - `Protocol::HTTP1::BadRequest` now includes `Protocol::HTTP::BadRequest` for better interoperability and handling of bad request errors across different HTTP protocol implementations.
+
 ## v0.36.0
 
   - Indicate trailers from chunked body for better validation by `Protocol::HTTP::Headers`.
