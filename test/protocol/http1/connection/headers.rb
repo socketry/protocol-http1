@@ -106,6 +106,19 @@ describe Protocol::HTTP1::Connection do
 			end
 		end
 		
+		with "a header that contains trailing whitespace" do
+			let(:headers) {[
+								"has-trailing-whitespace: here it is \t"
+						]}
+			
+			it "can parse the header" do
+				authority, method, target, version, headers, body = server.read_request
+				expect(headers).to have_keys(
+											"has-trailing-whitespace" => be == ["here it is"]
+							)
+			end
+		end
+		
 		with "a header that contains obsolete folding whitespace" do
 			let(:headers) {[
 				"user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_4) AppleWebKit/537.36 (KHTML, like Gecko)\n\tChrome/55.0.2883.95 Safari/537.36"
