@@ -755,15 +755,15 @@ module Protocol
 				
 				# While writing the body, we don't know if trailers will be added. We must choose a different body format depending on whether there is the chance of trailers, even if trailer.any? is currently false.
 				#
-				# Below you notice `and trailer.nil?`. I tried this but content-length is more important than trailers.
+				# When trailers are present, we must use chunked encoding (RFC 7230) since Content-Length cannot coexist with trailers. The trailer.nil? checks ensure we only use fixed-length or empty body when no trailers will be sent.
 				
 				if body.nil?
 					write_connection_header(version)
 					write_empty_body(body)
-				elsif length = body.length # and trailer.nil?
+				elsif length = body.length and trailer.nil?
 					write_connection_header(version)
 					write_fixed_length_body(body, length, head)
-				elsif body.empty?
+				elsif body.empty? and trailer.nil?
 					# Even thought this code is the same as the first clause `body.nil?`, HEAD responses have an empty body but still carry a content length. `write_fixed_length_body` takes care of this appropriately.
 					write_connection_header(version)
 					write_empty_body(body)
