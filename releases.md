@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Use chunked encoding when trailers are present, even when body has known length or is empty. Previously, `write_body` would use `write_fixed_length_body` or `write_empty_body` when the body had a length, silently dropping trailers. Per RFC 7230, trailers require chunked transfer encoding since `content-length` cannot coexist with trailers.
+
 ## v0.37.0
 
   - `Protocol::HTTP1::BadRequest` now includes `Protocol::HTTP::BadRequest` for better interoperability and handling of bad request errors across different HTTP protocol implementations.
