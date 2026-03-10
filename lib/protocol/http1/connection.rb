@@ -502,7 +502,7 @@ module Protocol
 					if match = line.match(HEADER)
 						# The RFCs require stripping of optional whitespace, but only at the end of the field value:
 						if value = match[2]
-							value.rstrip!(" \t")
+							value.rstrip!
 						else
 							value = ""
 						end
