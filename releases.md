@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Strip optional whitespace (OWS) from the end of header field values when parsing headers.
+
 ## v0.37.0
 
   - `Protocol::HTTP1::BadRequest` now includes `Protocol::HTTP::BadRequest` for better interoperability and handling of bad request errors across different HTTP protocol implementations.
