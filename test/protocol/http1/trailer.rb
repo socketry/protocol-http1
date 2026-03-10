@@ -27,9 +27,14 @@ describe Protocol::HTTP1::Connection do
 			server.write_body("HTTP/1.0", body, false, trailer)
 		end
 		
-		it "ignores trailers with content length" do
-			expect(server).to receive(:write_fixed_length_body)
+		it "uses chunked encoding when trailers are present even with content length" do
+			expect(server).to receive(:write_chunked_body).with(body, false, trailer)
 			server.write_body("HTTP/1.1", body, false, trailer)
+		end
+		
+		it "uses fixed length when no trailers" do
+			expect(server).to receive(:write_fixed_length_body)
+			server.write_body("HTTP/1.1", body, false, nil)
 		end
 		
 		it "uses chunked encoding when given trailers without content length" do
@@ -50,6 +55,60 @@ describe Protocol::HTTP1::Connection do
 			
 			# Headers are updated:
 			expect(headers).to be == {"foo" => ["bar"]}
+		end
+		
+		it "uses chunked encoding when given trailers with empty body" do
+			empty_body = Protocol::HTTP::Body::Buffered.new
+			trailer["grpc-status"] = "2"
+			
+			expect(server).to receive(:write_chunked_body).with(empty_body, false, trailer)
+			server.write_body("HTTP/1.1", empty_body, false, trailer)
+		end
+		
+		it "sends trailers with empty body (round-trip)" do
+			empty_body = Protocol::HTTP::Body::Buffered.new
+			trailer["grpc-status"] = "2"
+			
+			server.write_response("HTTP/1.1", 200, {})
+			server.write_body("HTTP/1.1", empty_body, false, trailer)
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(version).to be == "HTTP/1.1"
+			expect(status).to be == 200
+			expect(headers).to be == {}
+			
+			# Read all of the response body, including trailers:
+			body.join
+			
+			# Headers are updated:
+			expect(headers).to be == {"grpc-status" => ["2"]}
+		end
+		
+		it "uses chunked encoding when given trailers with known body length" do
+			trailer["grpc-status"] = "0"
+			
+			expect(server).to receive(:write_chunked_body).with(body, false, trailer)
+			server.write_body("HTTP/1.1", body, false, trailer)
+		end
+		
+		it "sends trailers with known body length (round-trip)" do
+			trailer["grpc-status"] = "0"
+			
+			server.write_response("HTTP/1.1", 200, {})
+			server.write_body("HTTP/1.1", body, false, trailer)
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(version).to be == "HTTP/1.1"
+			expect(status).to be == 200
+			expect(headers).to be == {}
+			
+			# Read all of the response body, including trailers:
+			body.join
+			
+			# Headers are updated:
+			expect(headers).to be == {"grpc-status" => ["0"]}
 		end
 	end
 end
