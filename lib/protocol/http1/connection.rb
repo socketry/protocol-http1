@@ -500,7 +500,14 @@ module Protocol
 					break if line.empty?
 					
 					if match = line.match(HEADER)
-						fields << [match[1], match[2] || ""]
+						# The RFCs require stripping of optional whitespace, but only at the end of the field value:
+						if value = match[2]
+							value.rstrip!
+						else
+							value = ""
+						end
+						
+						fields << [match[1], value]
 					else
 						raise BadHeader, "Could not parse header: #{line.inspect}"
 					end

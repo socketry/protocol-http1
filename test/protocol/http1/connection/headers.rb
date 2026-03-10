@@ -207,5 +207,103 @@ describe Protocol::HTTP1::Connection do
 				end.to raise_exception(Protocol::HTTP1::BadHeader)
 			end
 		end
+		
+		with "a header with leading whitespace (spaces)" do
+			let(:headers) {[
+				"x-test:   here it is"
+			]}
+			
+			it "strips leading spaces" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with leading whitespace (tabs)" do
+			let(:headers) {[
+				"x-test:\t\there it is"
+			]}
+			
+			it "strips leading tabs" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with leading whitespace (mixed)" do
+			let(:headers) {[
+				"x-test: \t \there it is"
+			]}
+			
+			it "strips leading spaces and tabs" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with trailing whitespace (spaces)" do
+			let(:headers) {[
+				"x-test: here it is   "
+			]}
+			
+			it "strips trailing spaces" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with trailing whitespace (tabs)" do
+			let(:headers) {[
+				"x-test: here it is\t\t"
+			]}
+			
+			it "strips trailing tabs" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with trailing whitespace (mixed)" do
+			let(:headers) {[
+				"x-test: here it is \t \t"
+			]}
+			
+			it "strips trailing spaces and tabs" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
+		
+		with "a header with both leading and trailing whitespace" do
+			let(:headers) {[
+				"x-test: \t here it is \t "
+			]}
+			
+			it "strips both leading and trailing whitespace" do
+				authority, method, target, version, headers, body = server.read_request
+				
+				expect(headers).to have_keys(
+					"x-test" => be == ["here it is"]
+				)
+			end
+		end
 	end
 end
