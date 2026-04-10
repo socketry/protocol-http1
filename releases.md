@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Defer `body.close` in `write_chunked_body`, `write_fixed_length_body`, and `write_body_and_close` until after the response is fully written and flushed. Previously, `body.each` called `close` in its `ensure` block before the terminal chunk (chunked encoding) or final flush was written, causing `rack.response_finished` callbacks to delay the client-visible response completion.
+
 ## v0.37.0
 
   - `Protocol::HTTP1::BadRequest` now includes `Protocol::HTTP::BadRequest` for better interoperability and handling of bad request errors across different HTTP protocol implementations.

@@ -614,32 +614,34 @@ module Protocol
 				
 				if head
 					@stream.flush
+				else
+					@stream.flush unless body.ready?
 					
-					body.close
-					
-					return
-				end
-				
-				@stream.flush unless body.ready?
-				
-				chunk_length = 0
-				body.each do |chunk|
-					chunk_length += chunk.bytesize
-					
-					if chunk_length > length
-						raise ContentLengthError, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
+					chunk_length = 0
+					# Use a manual read loop (not body.each) so that body.close runs after the response is fully written and flushed. This ensures completion callbacks (e.g. rack.response_finished) don't delay the client.
+					while chunk = body.read
+						chunk_length += chunk.bytesize
+						
+						if chunk_length > length
+							raise ContentLengthError, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
+						end
+						
+						@stream.write(chunk)
+						@stream.flush unless body.ready?
 					end
 					
-					@stream.write(chunk)
-					@stream.flush unless body.ready?
+					@stream.flush
+					
+					if chunk_length != length
+						raise ContentLengthError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
+					end
 				end
-				
-				@stream.flush
-				
-				if chunk_length != length
-					raise ContentLengthError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
-				end
+			rescue => error
+				raise
 			ensure
+				# Close the body after the response is fully flushed, so that completion callbacks run after the client has received the response:
+				body.close(error)
+				
 				self.send_end_stream!
 			end
 			
@@ -657,34 +659,36 @@ module Protocol
 				
 				if head
 					@stream.flush
-					
-					body.close
-					
-					return
-				end
-				
-				@stream.flush unless body.ready?
-				
-				body.each do |chunk|
-					next if chunk.size == 0
-					
-					@stream.write("#{chunk.bytesize.to_s(16).upcase}\r\n")
-					@stream.write(chunk)
-					@stream.write(CRLF)
-					
-					@stream.flush unless body.ready?
-				end
-				
-				if trailer&.any?
-					@stream.write("0\r\n")
-					write_headers(trailer)
-					@stream.write("\r\n")
 				else
-					@stream.write("0\r\n\r\n")
+					@stream.flush unless body.ready?
+					
+					# Use a manual read loop (not body.each) so that body.close runs after the terminal chunk is written. With body.each, the ensure { close } fires before the terminal "0\r\n\r\n" is sent, delaying the client.
+					while chunk = body.read
+						next if chunk.size == 0
+						
+						@stream.write("#{chunk.bytesize.to_s(16).upcase}\r\n")
+						@stream.write(chunk)
+						@stream.write(CRLF)
+						
+						@stream.flush unless body.ready?
+					end
+					
+					if trailer&.any?
+						@stream.write("0\r\n")
+						write_headers(trailer)
+						@stream.write("\r\n")
+					else
+						@stream.write("0\r\n\r\n")
+					end
+					
+					@stream.flush
 				end
-				
-				@stream.flush
+			rescue => error
+				raise
 			ensure
+				# Close the body after the complete chunked response (including terminal chunk) is flushed, so that completion callbacks don't block the client from seeing the response as complete:
+				body.close(error)
+				
 				self.send_end_stream!
 			end
 			
@@ -697,12 +701,11 @@ module Protocol
 				@persistent = false
 				
 				@stream.write("\r\n")
-				@stream.flush unless body.ready?
 				
-				if head
-					body.close
-				else
-					body.each do |chunk|
+				unless head
+					@stream.flush unless body.ready?
+					
+					while chunk = body.read
 						@stream.write(chunk)
 						
 						@stream.flush unless body.ready?
@@ -711,7 +714,12 @@ module Protocol
 				
 				@stream.flush
 				@stream.close_write
+			rescue => error
+				raise
 			ensure
+				# Close the body after the stream is fully written and half-closed, so that completion callbacks run after the client has received the full response:
+				body.close(error)
+				
 				self.send_end_stream!
 			end
 			
