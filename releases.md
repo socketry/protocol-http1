@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Rename `RequestRefusedError` -> `RefusedError`.
+
 ## v0.38.0
 
   - `write_request` now raises `Protocol::HTTP::RequestRefusedError` if the request line or headers cannot be written, indicating the request was not processed and can be safely retried.

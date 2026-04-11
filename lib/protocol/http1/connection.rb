@@ -258,7 +258,7 @@ module Protocol
 			# @parameter target [String] the request target.
 			# @parameter version [String] the HTTP version.
 			# @parameter headers [Hash] the HTTP headers.
-			# @raises [RequestRefusedError] if the request was not processed.
+			# @raises [RefusedError] if the request was not processed.
 			def write_request(authority, method, target, version, headers)
 				open!
 				
@@ -267,7 +267,7 @@ module Protocol
 				
 				write_headers(headers)
 			rescue
-				raise ::Protocol::HTTP::RequestRefusedError
+				raise ::Protocol::HTTP::RefusedError
 			end
 			
 			# Write a response to the connection. It is expected you will write the body after this method.

@@ -699,12 +699,12 @@ describe Protocol::HTTP1::Connection do
 		expect(client).to be(:closed?)
 	end
 	
-	it "raises RequestRefusedError when the stream is broken" do
+	it "raises RefusedError when the stream is broken" do
 		client.stream.close
 		
 		expect do
 			client.write_request("localhost", "GET", "/", "HTTP/1.1", {})
-		end.to raise_exception(Protocol::HTTP::RequestRefusedError)
+		end.to raise_exception(Protocol::HTTP::RefusedError)
 	end
 	
 	it "can't write a request in the closed state" do
@@ -712,7 +712,7 @@ describe Protocol::HTTP1::Connection do
 		
 		expect do
 			client.write_request("localhost", "GET", "/", "HTTP/1.0", {})
-		end.to raise_exception(Protocol::HTTP::RequestRefusedError)
+		end.to raise_exception(Protocol::HTTP::RefusedError)
 	end
 	
 	it "can't read a response in the closed state" do
