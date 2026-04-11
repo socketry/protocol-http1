@@ -258,7 +258,7 @@ module Protocol
 			# @parameter target [String] the request target.
 			# @parameter version [String] the HTTP version.
 			# @parameter headers [Hash] the HTTP headers.
-			# @raises [ProtocolError] if the connection is not in the idle state.
+			# @raises [RequestRefusedError] if the request was not processed.
 			def write_request(authority, method, target, version, headers)
 				open!
 				
