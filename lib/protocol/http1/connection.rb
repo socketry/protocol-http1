@@ -266,6 +266,8 @@ module Protocol
 				@stream.write("host: #{authority}\r\n") if authority
 				
 				write_headers(headers)
+			rescue
+				raise ::Protocol::HTTP::RequestRefusedError
 			end
 			
 			# Write a response to the connection. It is expected you will write the body after this method.
