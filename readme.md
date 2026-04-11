@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.38.0
+
+  - `write_request` now raises `Protocol::HTTP::RequestRefusedError` if the request line or headers cannot be written, indicating the request was not processed and can be safely retried.
+
 ### v0.37.1
 
   - Defer `body.close` in `write_chunked_body`, `write_fixed_length_body`, and `write_body_and_close` until after the response is fully written and flushed. Previously, `body.each` called `close` in its `ensure` block before the terminal chunk (chunked encoding) or final flush was written, causing `rack.response_finished` callbacks to delay the client-visible response completion.
@@ -68,10 +72,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 
   - Fix header parsing to handle tab characters between values correctly.
   - Complete documentation coverage for all public APIs.
-
-### v0.31.0
-
-  - Enforce one-way transition for persistent connections to prevent invalid state changes.
 
 ## Contributing
 
