@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.39.0
+
+  - Rename `RequestRefusedError` -\> `RefusedError`.
+
 ### v0.38.0
 
   - `write_request` now raises `Protocol::HTTP::RequestRefusedError` if the request line or headers cannot be written, indicating the request was not processed and can be safely retried.
@@ -67,11 +71,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.33.0
 
   - Support high-byte characters in HTTP headers for improved international compatibility.
-
-### v0.32.0
-
-  - Fix header parsing to handle tab characters between values correctly.
-  - Complete documentation coverage for all public APIs.
 
 ## Contributing
 

@@ -1,8 +1,8 @@
 # Releases
 
-## Unreleased
+## v0.39.0
 
-  - Rename `RequestRefusedError` -> `RefusedError`.
+  - Rename `RequestRefusedError` -\> `RefusedError`.
 
 ## v0.38.0
 
