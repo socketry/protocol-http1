@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.40.0
+
+  - Use `Protocol::HTTP::Status` for standard HTTP status descriptions and remove the duplicate `Protocol::HTTP1::Reason` table.
+
 ### v0.39.0
 
   - Rename `RequestRefusedError` -\> `RefusedError`.
@@ -67,10 +71,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.34.0
 
   - Support empty header values in HTTP parsing for better compatibility.
-
-### v0.33.0
-
-  - Support high-byte characters in HTTP headers for improved international compatibility.
 
 ## Contributing
 
