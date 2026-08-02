@@ -8,8 +8,8 @@
 # Copyright, 2024, by Anton Zhuravsky.
 
 require "protocol/http/headers"
+require "protocol/http/status"
 
-require_relative "reason"
 require_relative "error"
 require_relative "body"
 
@@ -277,7 +277,7 @@ module Protocol
 			# @parameter headers [Hash] the HTTP headers.
 			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
 			def write_response(version, status, headers, reason = nil)
-				reason ||= Reason::DESCRIPTIONS[status]
+				reason ||= Protocol::HTTP::Status.description(status)
 				
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write response in state: #{@state}!"
@@ -297,7 +297,7 @@ module Protocol
 			# @parameter reason [String] the reason phrase, defaults to the standard reason phrase for the status code.
 			# @raises [ProtocolError] if the connection is not in the open or half-closed remote state.
 			def write_interim_response(version, status, headers, reason = nil)
-				reason ||= Reason::DESCRIPTIONS[status]
+				reason ||= Protocol::HTTP::Status.description(status)
 				
 				unless @state == :open or @state == :half_closed_remote
 					raise ProtocolError, "Cannot write interim response in state: #{@state}!"

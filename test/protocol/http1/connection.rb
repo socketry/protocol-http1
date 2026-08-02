@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2019-2025, by Samuel Williams.
+# Copyright, 2019-2026, by Samuel Williams.
 # Copyright, 2019, by Brian Morearty.
 # Copyright, 2020, by Bruno Sutic.
 # Copyright, 2024, by Thomas Morgan.
@@ -177,6 +177,14 @@ describe Protocol::HTTP1::Connection do
 	end
 	
 	with "#write_response" do
+		it "uses the standard status description" do
+			server.open!
+			server.write_response("HTTP/1.1", 418, {})
+			server.close
+			
+			expect(client.stream.read).to be == "HTTP/1.1 418 I'm a Teapot\r\n"
+		end
+		
 		it "fails to write a response with invalid header name" do
 			server.open!
 			
