@@ -71,7 +71,7 @@ module Protocol
 						end
 						
 						# If the connection has been closed before we have read the expected length, raise an error:
-						raise EOFError, "connection closed before expected length was read!"
+						raise EOFError, "Connection closed before expected length was read!"
 					end
 				end
 				

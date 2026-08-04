@@ -75,7 +75,7 @@ module Protocol
 				def read
 					while !@finished
 						unless @connection
-							raise EOFError, "connection closed before expected length was read!"
+							raise EOFError, "Connection closed before expected length was read!"
 						end
 						
 						if @remaining
@@ -90,7 +90,7 @@ module Protocol
 							terminator = @connection.read(CRLF.bytesize)
 							
 							unless terminator&.bytesize == CRLF.bytesize
-								raise EOFError, "connection closed before expected length was read!"
+								raise EOFError, "Connection closed before expected length was read!"
 							end
 							
 							unless terminator == CRLF
@@ -128,7 +128,7 @@ module Protocol
 						connection.close_read
 					end
 					
-					raise EOFError, "connection closed before expected length was read!"
+					raise EOFError, "Connection closed before expected length was read!"
 				end
 				
 				# @returns [String] a human-readable representation of the body.
