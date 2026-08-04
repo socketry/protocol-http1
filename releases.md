@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## v0.40.2
 
   - Handle unexpected EOF while reading chunked trailers.
 

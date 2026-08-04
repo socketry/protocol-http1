@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.40.2
+
+  - Handle unexpected EOF while reading chunked trailers.
+
 ### v0.40.1
 
   - Bound fixed-length and chunked body reads, and validate chunk terminators.
@@ -66,11 +70,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 ### v0.35.0
 
   - Add traces provider for `Protocol::HTTP1::Connection`.
-
-### v0.34.1
-
-  - Fix connection state handling to allow idempotent response body closing.
-  - Add `kisaten` fuzzing integration for improved security testing.
 
 ## Contributing
 
