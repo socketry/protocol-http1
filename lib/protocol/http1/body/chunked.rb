@@ -15,6 +15,9 @@ module Protocol
 			class Chunked < HTTP::Body::Readable
 				CRLF = "\r\n"
 				
+				# The maximum amount of body data returned by a single read.
+				BLOCK_SIZE = 1024 * 64
+				
 				# Initialize the chunked body.
 				#
 				# @parameter connection [Protocol::HTTP1::Connection] the connection to read the body from.
@@ -27,6 +30,7 @@ module Protocol
 					
 					@length = 0
 					@count = 0
+					@remaining = nil
 				end
 				
 				# @attribute [Integer] the number of chunks read so far.
@@ -69,15 +73,39 @@ module Protocol
 				# @returns [String | Nil] the next chunk of data, or `nil` if the body is finished.
 				# @raises [EOFError] if the connection is closed before the expected length is read.
 				def read
-					if !@finished
-						if @connection
+					while !@finished
+						unless @connection
+							raise EOFError, "connection closed before expected length was read!"
+						end
+						
+						if @remaining
+							if @remaining > 0
+								chunk = @connection.readpartial([@remaining, BLOCK_SIZE].min)
+								@remaining -= chunk.bytesize
+								@length += chunk.bytesize
+								
+								return chunk
+							end
+							
+							terminator = @connection.read(CRLF.bytesize)
+							
+							unless terminator&.bytesize == CRLF.bytesize
+								raise EOFError, "connection closed before expected length was read!"
+							end
+							
+							unless terminator == CRLF
+								raise BadRequest, "Invalid chunk terminator: #{terminator.inspect}"
+							end
+							
+							@remaining = nil
+							@count += 1
+						else
 							length, _extensions = @connection.read_line.split(";", 2)
 							
 							unless length =~ VALID_CHUNK_LENGTH
 								raise BadRequest, "Invalid chunk length: #{length.inspect}"
 							end
 							
-							# It is possible this line contains chunk extension, so we use `to_i` to only consider the initial integral part:
 							length = Integer(length, 16)
 							
 							if length == 0
@@ -91,27 +119,16 @@ module Protocol
 								return nil
 							end
 							
-							# Read trailing CRLF:
-							chunk = @connection.read(length + 2)
-							
-							if chunk.bytesize == length + 2
-								# ...and chomp it off:
-								chunk.chomp!(CRLF)
-								
-								@length += length
-								@count += 1
-								
-								return chunk
-							else
-								# The connection has been closed before we have read the requested length:
-								@connection.close_read
-								@connection = nil
-							end
+							@remaining = length
 						end
-						
-						# If the connection has been closed before we have read the final chunk, raise an error:
-						raise EOFError, "connection closed before expected length was read!"
 					end
+				rescue EOFError
+					if connection = @connection
+						@connection = nil
+						connection.close_read
+					end
+					
+					raise EOFError, "connection closed before expected length was read!"
 				end
 				
 				# @returns [String] a human-readable representation of the body.

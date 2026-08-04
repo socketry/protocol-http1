@@ -94,6 +94,24 @@ describe Protocol::HTTP1::Body::Chunked do
 			expect(connection).to be(:half_closed_remote?)
 		end
 		
+		it "bounds the amount of data returned" do
+			content = "x" * (subject::BLOCK_SIZE + 1)
+			buffer = StringIO.new("#{content.bytesize.to_s(16)}\r\n#{content}\r\n0\r\n\r\n")
+			body = subject.new(Protocol::HTTP1::Connection.new(buffer, state: :open), headers)
+			
+			expect(body.read.bytesize).to be == subject::BLOCK_SIZE
+			expect(body.read.bytesize).to be == 1
+			expect(body.read).to be_nil
+		end
+		
+		it "rejects an invalid chunk terminator" do
+			buffer = StringIO.new("#{content.bytesize.to_s(16)}\r\n#{content}XX")
+			body = subject.new(Protocol::HTTP1::Connection.new(buffer, state: :open), headers)
+			
+			expect(body.read).to be == content
+			expect{body.read}.to raise_exception(Protocol::HTTP1::BadRequest)
+		end
+		
 		with "trailer" do
 			let(:postfix) {"ETag: abcd\r\n"}
 			
@@ -131,6 +149,7 @@ describe Protocol::HTTP1::Body::Chunked do
 			let(:buffer) {StringIO.new("#{(content.bytesize + 1).to_s(16)}\r\n#{content}")}
 			
 			it "raises error" do
+				expect(body.read).to be == content
 				expect{body.read}.to raise_exception(EOFError)
 				
 				expect(connection).to be(:half_closed_remote?)

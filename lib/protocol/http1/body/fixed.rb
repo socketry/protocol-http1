@@ -10,6 +10,9 @@ module Protocol
 		module Body
 			# Represents a fixed length body.
 			class Fixed < HTTP::Body::Readable
+				# The maximum amount of body data returned by a single read.
+				BLOCK_SIZE = 1024 * 64
+				
 				# Initialize the body with the given connection and length.
 				#
 				# @parameter connection [Protocol::HTTP1::Connection] the connection to read the body from.
@@ -55,7 +58,7 @@ module Protocol
 					if @remaining > 0
 						if @connection
 							# `readpartial` will raise `EOFError` if the connection is finished, or `IOError` if the connection is closed.
-							chunk = @connection.readpartial(@remaining)
+							chunk = @connection.readpartial([@remaining, BLOCK_SIZE].min)
 							
 							@remaining -= chunk.bytesize
 							
