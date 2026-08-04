@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## v0.40.1
 
   - Bound fixed-length and chunked body reads, and validate chunk terminators.
 

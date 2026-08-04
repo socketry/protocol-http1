@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.40.1
+
+  - Bound fixed-length and chunked body reads, and validate chunk terminators.
+
 ### v0.40.0
 
   - Use `Protocol::HTTP::Status` for standard HTTP status descriptions and remove the duplicate `Protocol::HTTP1::Reason` table.
@@ -67,10 +71,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 
   - Fix connection state handling to allow idempotent response body closing.
   - Add `kisaten` fuzzing integration for improved security testing.
-
-### v0.34.0
-
-  - Support empty header values in HTTP parsing for better compatibility.
 
 ## Contributing
 
