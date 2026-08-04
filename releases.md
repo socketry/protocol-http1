@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Bound fixed-length and chunked body reads, and validate chunk terminators.
+
 ## v0.40.0
 
   - Use `Protocol::HTTP::Status` for standard HTTP status descriptions and remove the duplicate `Protocol::HTTP1::Reason` table.

@@ -85,6 +85,15 @@ describe Protocol::HTTP1::Body::Fixed do
 			expect(body).to be(:empty?)
 		end
 		
+		it "bounds the amount of data returned" do
+			content = "x" * (subject::BLOCK_SIZE + 1)
+			body = subject.new(Protocol::HTTP1::Connection.new(StringIO.new(content), state: :open), content.bytesize)
+			
+			expect(body.read.bytesize).to be == subject::BLOCK_SIZE
+			expect(body.read.bytesize).to be == 1
+			expect(body.read).to be_nil
+		end
+		
 		with "length smaller than stream size" do
 			let(:body) {subject.new(connection, 5)}
 			
