@@ -128,7 +128,7 @@ module Protocol
 						connection.close_read
 					end
 					
-					raise EOFError, "Connection closed before expected length was read!"
+					raise
 				end
 				
 				# @returns [String] a human-readable representation of the body.
@@ -149,7 +149,7 @@ module Protocol
 				
 				# Read the trailer from the connection, and add any headers to the trailer.
 				def read_trailer
-					while line = @connection.read_line?
+					while line = @connection.read_line
 						# Empty line indicates end of trailer:
 						break if line.empty?
 						

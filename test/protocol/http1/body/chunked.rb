@@ -128,6 +128,16 @@ describe Protocol::HTTP1::Body::Chunked do
 			end
 		end
 		
+		with "incomplete trailer" do
+			let(:buffer) {StringIO.new("0\r\n")}
+			
+			it "raises EOFError when the final CRLF is missing" do
+				expect{body.read}.to raise_exception(EOFError)
+				
+				expect(connection).to be(:half_closed_remote?)
+			end
+		end
+		
 		with "bad trailers" do
 			let(:postfix) {":ETag abcd\r\n"}
 			
