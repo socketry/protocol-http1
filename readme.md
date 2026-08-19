@@ -30,6 +30,10 @@ Please see the [project documentation](https://socketry.github.io/protocol-http1
 
 Please see the [project releases](https://socketry.github.io/protocol-http1/releases/index) for all releases.
 
+### v0.41.0
+
+  - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
+
 ### v0.40.2
 
   - Handle unexpected EOF while reading chunked trailers.
@@ -66,10 +70,6 @@ Please see the [project releases](https://socketry.github.io/protocol-http1/rele
 
   - Tidy up implementation of `read_line?` to handle line length errors and protocol violations more clearly.
   - Improve error handling for unexpected connection closures (`Errno::ECONNRESET`) in `read_line?`.
-
-### v0.35.0
-
-  - Add traces provider for `Protocol::HTTP1::Connection`.
 
 ## Contributing
 
