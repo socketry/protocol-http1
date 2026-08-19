@@ -177,15 +177,15 @@ module Protocol
 			# Write the appropriate header for connection persistence.
 			def write_connection_header(version)
 				if version == HTTP10
-					@stream.write("connection: keep-alive\r\n") if @persistent
+					write_stream("connection: keep-alive\r\n") if @persistent
 				else
-					@stream.write("connection: close\r\n") unless @persistent
+					write_stream("connection: close\r\n") unless @persistent
 				end
 			end
 			
 			# Write the appropriate header for connection upgrade.
 			def write_upgrade_header(upgrade)
-				@stream.write("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
+				write_stream("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
 			end
 			
 			# Indicates whether the connection has been hijacked meaning its IO has been handed over and is not usable anymore.
@@ -262,8 +262,8 @@ module Protocol
 			def write_request(authority, method, target, version, headers)
 				open!
 				
-				@stream.write("#{method} #{target} #{version}\r\n")
-				@stream.write("host: #{authority}\r\n") if authority
+				write_stream("#{method} #{target} #{version}\r\n")
+				write_stream("host: #{authority}\r\n") if authority
 				
 				write_headers(headers)
 			rescue
@@ -284,7 +284,7 @@ module Protocol
 				end
 				
 				# Safari WebSockets break if no reason is given:
-				@stream.write("#{version} #{status} #{reason}\r\n")
+				write_stream("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
 			end
@@ -303,12 +303,12 @@ module Protocol
 					raise ProtocolError, "Cannot write interim response in state: #{@state}!"
 				end
 				
-				@stream.write("#{version} #{status} #{reason}\r\n")
+				write_stream("#{version} #{status} #{reason}\r\n")
 				
 				write_headers(headers)
 				
-				@stream.write("\r\n")
-				@stream.flush
+				write_stream("\r\n")
+				flush_stream
 			end
 			
 			# Write headers to the connection.
@@ -331,7 +331,7 @@ module Protocol
 					end
 					
 					# Write it:
-					@stream.write("#{name}: #{value}\r\n")
+					write_stream("#{name}: #{value}\r\n")
 				end
 			end
 			
@@ -340,6 +340,8 @@ module Protocol
 			# @parameter length [Integer] the maximum number of bytes to read.
 			def readpartial(length)
 				@stream.readpartial(length)
+			rescue Errno::EPIPE, Errno::ECONNRESET
+				raise HTTP::RemoteError, "Remote connection closed during readpartial!"
 			end
 			
 			# Read some data from the connection.
@@ -347,6 +349,8 @@ module Protocol
 			# @parameter length [Integer] the number of bytes to read.
 			def read(length)
 				@stream.read(length)
+			rescue Errno::EPIPE, Errno::ECONNRESET
+				raise HTTP::RemoteError, "Remote connection closed during read!"
 			end
 			
 			# Read a line from the connection.
@@ -541,16 +545,16 @@ module Protocol
 				
 				write_upgrade_header(protocol)
 				
-				@stream.write("\r\n")
-				@stream.flush # Don't remove me!
+				write_stream("\r\n")
+				flush_stream # Don't remove me!
 				
 				if body
 					body.each do |chunk|
-						@stream.write(chunk)
-						@stream.flush
+						write_stream(chunk)
+						flush_stream
 					end
 					
-					@stream.close_write
+					close_write_stream
 				end
 				
 				return @stream
@@ -572,16 +576,16 @@ module Protocol
 				
 				write_connection_header(version)
 				
-				@stream.write("\r\n")
-				@stream.flush # Don't remove me!
+				write_stream("\r\n")
+				flush_stream # Don't remove me!
 				
 				if body
 					body.each do |chunk|
-						@stream.write(chunk)
-						@stream.flush
+						write_stream(chunk)
+						flush_stream
 					end
 					
-					@stream.close_write
+					close_write_stream
 				end
 				
 				return @stream
@@ -595,8 +599,8 @@ module Protocol
 			#
 			# @parameter body [Object | Nil] the body to write.
 			def write_empty_body(body = nil)
-				@stream.write("content-length: 0\r\n\r\n")
-				@stream.flush
+				write_stream("content-length: 0\r\n\r\n")
+				flush_stream
 				
 				body&.close
 			ensure
@@ -612,12 +616,12 @@ module Protocol
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
 			# @raises [ContentLengthError] if the body length does not match the content length specified.
 			def write_fixed_length_body(body, length, head)
-				@stream.write("content-length: #{length}\r\n\r\n")
+				write_stream("content-length: #{length}\r\n\r\n")
 				
 				if head
-					@stream.flush
+					flush_stream
 				else
-					@stream.flush unless body.ready?
+					flush_stream unless body.ready?
 					
 					chunk_length = 0
 					# Use a manual read loop (not body.each) so that body.close runs after the response is fully written and flushed. This ensures completion callbacks (e.g. rack.response_finished) don't delay the client.
@@ -628,11 +632,11 @@ module Protocol
 							raise ContentLengthError, "Trying to write #{chunk_length} bytes, but content length was #{length} bytes!"
 						end
 						
-						@stream.write(chunk)
-						@stream.flush unless body.ready?
+						write_stream(chunk)
+						flush_stream unless body.ready?
 					end
 					
-					@stream.flush
+					flush_stream
 					
 					if chunk_length != length
 						raise ContentLengthError, "Wrote #{chunk_length} bytes, but content length was #{length} bytes!"
@@ -657,33 +661,33 @@ module Protocol
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
 			# @parameter trailer [Hash | Nil] the trailers to write.
 			def write_chunked_body(body, head, trailer = nil)
-				@stream.write("transfer-encoding: chunked\r\n\r\n")
+				write_stream("transfer-encoding: chunked\r\n\r\n")
 				
 				if head
-					@stream.flush
+					flush_stream
 				else
-					@stream.flush unless body.ready?
+					flush_stream unless body.ready?
 					
 					# Use a manual read loop (not body.each) so that body.close runs after the terminal chunk is written. With body.each, the ensure { close } fires before the terminal "0\r\n\r\n" is sent, delaying the client.
 					while chunk = body.read
 						next if chunk.size == 0
 						
-						@stream.write("#{chunk.bytesize.to_s(16).upcase}\r\n")
-						@stream.write(chunk)
-						@stream.write(CRLF)
+						write_stream("#{chunk.bytesize.to_s(16).upcase}\r\n")
+						write_stream(chunk)
+						write_stream(CRLF)
 						
-						@stream.flush unless body.ready?
+						flush_stream unless body.ready?
 					end
 					
 					if trailer&.any?
-						@stream.write("0\r\n")
+						write_stream("0\r\n")
 						write_headers(trailer)
-						@stream.write("\r\n")
+						write_stream("\r\n")
 					else
-						@stream.write("0\r\n\r\n")
+						write_stream("0\r\n\r\n")
 					end
 					
-					@stream.flush
+					flush_stream
 				end
 			rescue => error
 				raise
@@ -702,20 +706,20 @@ module Protocol
 				# We can't be persistent because we don't know the data length:
 				@persistent = false
 				
-				@stream.write("\r\n")
+				write_stream("\r\n")
 				
 				unless head
-					@stream.flush unless body.ready?
+					flush_stream unless body.ready?
 					
 					while chunk = body.read
-						@stream.write(chunk)
+						write_stream(chunk)
 						
-						@stream.flush unless body.ready?
+						flush_stream unless body.ready?
 					end
 				end
 				
-				@stream.flush
-				@stream.close_write
+				flush_stream
+				close_write_stream
 			rescue => error
 				raise
 			ensure
@@ -1025,6 +1029,26 @@ module Protocol
 					# connection.
 					return read_remainder_body
 				end
+			end
+			
+			private
+			
+			def write_stream(data)
+				@stream.write(data)
+			rescue Errno::EPIPE, Errno::ECONNRESET
+				raise HTTP::RemoteError, "Remote connection closed during write!"
+			end
+			
+			def flush_stream
+				@stream.flush
+			rescue Errno::EPIPE, Errno::ECONNRESET
+				raise HTTP::RemoteError, "Remote connection closed during flush!"
+			end
+			
+			def close_write_stream
+				@stream.close_write
+			rescue Errno::EPIPE, Errno::ECONNRESET
+				raise HTTP::RemoteError, "Remote connection closed during close_write!"
 			end
 		end
 	end

@@ -56,6 +56,38 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
+	with "remote connection errors" do
+		[Errno::EPIPE, Errno::ECONNRESET].each do |error_class|
+			it "maps #{error_class} while writing to RemoteError", unique: error_class.name do
+				server.open!
+				
+				expect(server.stream).to receive(:write).and_raise(error_class)
+				
+				expect do
+					server.write_response("HTTP/1.1", 200, {})
+				end.to raise_exception(Protocol::HTTP::RemoteError).and(
+					have_attributes(
+						message: be == "Remote connection closed during write!",
+						cause: be_a(error_class)
+					)
+				)
+			end
+			
+			it "maps #{error_class} while reading to RemoteError", unique: error_class.name do
+				expect(server.stream).to receive(:readpartial).and_raise(error_class)
+				
+				expect do
+					server.readpartial(1)
+				end.to raise_exception(Protocol::HTTP::RemoteError).and(
+					have_attributes(
+						message: be == "Remote connection closed during readpartial!",
+						cause: be_a(error_class)
+					)
+				)
+			end
+		end
+	end
+	
 	with "#read_request" do
 		it "reads request without body" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
