@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
+
 ## v0.40.2
 
   - Handle unexpected EOF while reading chunked trailers.
