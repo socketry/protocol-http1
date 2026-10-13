@@ -88,6 +88,15 @@ describe Protocol::HTTP1::Connection do
 		end
 	end
 	
+	with "#read_headers" do
+		it "strips optional whitespace around values" do
+			client.stream.write "X-A:  a b \t\r\nX-B:\t\r\nX-C: c\v\r\n\r\n"
+			client.stream.close
+			
+			expect(server.read_headers).to be == [["X-A", "a b"], ["X-B", ""], ["X-C", "c\v"]]
+		end
+	end
+	
 	with "#read_request" do
 		it "reads request without body" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
@@ -154,6 +163,15 @@ describe Protocol::HTTP1::Connection do
 			
 			expect(server).to be(:persistent?, version, method, headers)
 			expect(server).to be(:persistent)
+		end
+		
+		it "reads request with chunked body when transfer-encoding has trailing whitespace" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked \r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			authority, method, target, version, headers, body = server.read_request
+			
+			expect(body.join).to be == "Hello World"
 		end
 		
 		it "reads request with CONNECT method" do

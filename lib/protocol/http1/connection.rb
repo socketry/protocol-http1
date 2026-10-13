@@ -40,7 +40,7 @@ module Protocol
 		OWS = /[ \t]*/
 		# A field value is any string of characters that does not contain a null character, CR, or LF. After reflecting on the RFCs and surveying real implementations, I came to the conclusion that the RFCs are too restrictive. Most servers only check for the presence of null bytes, and obviously CR/LF characters have semantic meaning in the parser. So, I decided to follow this defacto standard, even if I'm not entirely happy with it.
 		FIELD_VALUE = /[^\0\r\n]+/.freeze
-		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:(#{FIELD_VALUE})#{OWS})?\z/.freeze
+		HEADER = /\A(#{FIELD_NAME}):#{OWS}(?:([^\0\r\n]*[^\0\r\n \t])#{OWS})?\z/.freeze
 		
 		VALID_FIELD_NAME = /\A#{FIELD_NAME}\z/.freeze
 		VALID_FIELD_VALUE = /\A#{FIELD_VALUE}?\z/.freeze

@@ -128,6 +128,19 @@ describe Protocol::HTTP1::Body::Chunked do
 			end
 		end
 		
+		with "trailer with trailing whitespace" do
+			let(:postfix) {"ETag: abcd \t\r\n"}
+			
+			it "strips trailing whitespace from the value" do
+				headers.add("trailer", "etag")
+				
+				expect(body.read).to be == "Hello World"
+				expect(body.read).to be == nil
+				
+				expect(headers["etag"]).to be == "abcd"
+			end
+		end
+		
 		with "incomplete trailer" do
 			let(:buffer) {StringIO.new("0\r\n")}
 			

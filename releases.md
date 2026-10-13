@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Strip trailing whitespace from parsed header and trailer values.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
