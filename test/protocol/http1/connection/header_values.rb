@@ -92,6 +92,26 @@ describe Protocol::HTTP1::Connection do
 		expect(stream.string).to be == "x-bytes: #{value}\r\n"
 	end
 	
+	[Encoding::ASCII_8BIT, Encoding::UTF_8, Encoding::US_ASCII].each do |encoding|
+		with "non-ASCII bytes tagged as #{encoding}", unique: encoding.name do
+			let(:value) {"a\xFFb".b.force_encoding(encoding)}
+			
+			it "preserves the request target bytes" do
+				connection.write_request("example.com", "GET", "/#{value}", "HTTP/1.1", {})
+				
+				expect(stream.string.b).to be == "GET /a\xFFb HTTP/1.1\r\nhost: example.com\r\n".b
+				expect(value.encoding).to be == encoding
+			end
+			
+			it "preserves the authority bytes" do
+				connection.write_request(value, "GET", "/", "HTTP/1.1", {})
+				
+				expect(stream.string.b).to be == "GET / HTTP/1.1\r\nhost: a\xFFb\r\n".b
+				expect(value.encoding).to be == encoding
+			end
+		end
+	end
+	
 	it "writes a valid Host header" do
 		connection.write_request("example.com", "GET", "/", "HTTP/1.1", {})
 		

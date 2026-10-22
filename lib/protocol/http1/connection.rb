@@ -33,6 +33,7 @@ module Protocol
 		
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
+		VALID_METHOD = /\A#{TOKEN}\z/.freeze
 		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
 		
 		# HTTP/1.x header parser:
@@ -254,7 +255,7 @@ module Protocol
 			#
 			# Transitions to the open state.
 			#
-			# Rejects CR, LF, and NUL in the authority and target before writing any request bytes.
+			# Requires the method to be an HTTP token and rejects CR, LF, and NUL bytes in the authority and target before writing any request bytes.
 			#
 			# @parameter authority [String] the authority of the request.
 			# @parameter method [String] the HTTP method.
@@ -263,14 +264,19 @@ module Protocol
 			# @parameter headers [Hash] the HTTP headers.
 			# @raises [RefusedError] if the request was not processed.
 			def write_request(authority, method, target, version, headers)
+				method = method.to_s
+				unless method.b.match?(VALID_METHOD)
+					raise InvalidRequest, "Invalid request method: #{method.inspect}"
+				end
+				
 				target = target.to_s
-				unless target.match?(VALID_FIELD_VALUE)
+				unless target.b.match?(VALID_FIELD_VALUE)
 					raise InvalidRequest, "Invalid request target: #{target.inspect}"
 				end
 				
 				if authority
 					authority = authority.to_s
-					unless authority.match?(VALID_FIELD_VALUE)
+					unless authority.b.match?(VALID_FIELD_VALUE)
 						raise InvalidRequest, "Invalid request authority: #{authority.inspect}"
 					end
 				end
