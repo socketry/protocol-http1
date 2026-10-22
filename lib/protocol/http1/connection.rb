@@ -278,7 +278,7 @@ module Protocol
 				open!
 				
 				write_stream("#{method} #{target} #{version}\r\n")
-				write_header(HOST, authority) if authority
+				write_stream("host: #{authority}\r\n") if authority
 				
 				write_headers(headers)
 			rescue
