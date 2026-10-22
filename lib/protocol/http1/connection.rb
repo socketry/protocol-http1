@@ -254,6 +254,8 @@ module Protocol
 			#
 			# Transitions to the open state.
 			#
+			# Rejects CR, LF, and NUL in the authority and target before writing any request bytes.
+			#
 			# @parameter authority [String] the authority of the request.
 			# @parameter method [String] the HTTP method.
 			# @parameter target [String] the request target.
@@ -261,6 +263,18 @@ module Protocol
 			# @parameter headers [Hash] the HTTP headers.
 			# @raises [RefusedError] if the request was not processed.
 			def write_request(authority, method, target, version, headers)
+				target = target.to_s
+				unless target.match?(VALID_FIELD_VALUE)
+					raise InvalidRequest, "Invalid request target: #{target.inspect}"
+				end
+				
+				if authority
+					authority = authority.to_s
+					unless authority.match?(VALID_FIELD_VALUE)
+						raise InvalidRequest, "Invalid request authority: #{authority.inspect}"
+					end
+				end
+				
 				open!
 				
 				write_stream("#{method} #{target} #{version}\r\n")
