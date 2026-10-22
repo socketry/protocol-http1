@@ -20,7 +20,7 @@ describe Protocol::HTTP1::Connection do
 			
 			version, status, reason, headers, body = client.read_response("GET")
 			
-			expect(headers).to be == headers
+			expect(headers.to_a).to be == expected_headers.to_a
 		end
 		
 		with "a content-type header" do

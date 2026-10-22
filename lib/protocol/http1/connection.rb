@@ -33,6 +33,7 @@ module Protocol
 		
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
+		VALID_METHOD = /\A#{TOKEN}\z/.freeze
 		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
 		
 		# HTTP/1.x header parser:
@@ -185,7 +186,8 @@ module Protocol
 			
 			# Write the appropriate header for connection upgrade.
 			def write_upgrade_header(upgrade)
-				write_stream("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
+				write_header(CONNECTION, "upgrade")
+				write_header(UPGRADE, upgrade)
 			end
 			
 			# Indicates whether the connection has been hijacked meaning its IO has been handed over and is not usable anymore.
@@ -253,6 +255,8 @@ module Protocol
 			#
 			# Transitions to the open state.
 			#
+			# Requires the method to be an HTTP token and rejects CR, LF, and NUL bytes in the authority and target before writing any request bytes.
+			#
 			# @parameter authority [String] the authority of the request.
 			# @parameter method [String] the HTTP method.
 			# @parameter target [String] the request target.
@@ -260,6 +264,23 @@ module Protocol
 			# @parameter headers [Hash] the HTTP headers.
 			# @raises [RefusedError] if the request was not processed.
 			def write_request(authority, method, target, version, headers)
+				method = method.to_s
+				unless method.b.match?(VALID_METHOD)
+					raise InvalidRequest, "Invalid request method: #{method.inspect}"
+				end
+				
+				target = target.to_s
+				unless target.b.match?(VALID_FIELD_VALUE)
+					raise InvalidRequest, "Invalid request target: #{target.inspect}"
+				end
+				
+				if authority
+					authority = authority.to_s
+					unless authority.b.match?(VALID_FIELD_VALUE)
+						raise InvalidRequest, "Invalid request authority: #{authority.inspect}"
+					end
+				end
+				
 				open!
 				
 				write_stream("#{method} #{target} #{version}\r\n")
@@ -311,27 +332,36 @@ module Protocol
 				flush_stream
 			end
 			
+			# Write a header to the connection, rejecting CR, LF, and NUL in its value.
+			#
+			# @parameter name [String] the header name.
+			# @parameter value [String] the header value.
+			# @raises [BadHeader] if the header name or value is invalid.
+			def write_header(name, value)
+				# Convert it to a string:
+				name = name.to_s
+				value = value.to_s
+				
+				# Validate it:
+				unless name.match?(VALID_FIELD_NAME)
+					raise BadHeader, "Invalid header name: #{name.inspect}"
+				end
+				
+				unless value.match?(VALID_FIELD_VALUE)
+					raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
+				end
+				
+				# Write it:
+				write_stream("#{name}: #{value}\r\n")
+			end
+			
 			# Write headers to the connection.
 			#
 			# @parameter headers [Hash] the headers to write.
 			# @raises [BadHeader] if the header name or value is invalid.
 			def write_headers(headers)
 				headers.each do |name, value|
-					# Convert it to a string:
-					name = name.to_s
-					value = value.to_s
-					
-					# Validate it:
-					unless name.match?(VALID_FIELD_NAME)
-						raise BadHeader, "Invalid header name: #{name.inspect}"
-					end
-					
-					unless value.match?(VALID_FIELD_VALUE)
-						raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
-					end
-					
-					# Write it:
-					write_stream("#{name}: #{value}\r\n")
+					write_header(name, value)
 				end
 			end
 			
