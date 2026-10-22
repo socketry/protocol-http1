@@ -185,7 +185,8 @@ module Protocol
 			
 			# Write the appropriate header for connection upgrade.
 			def write_upgrade_header(upgrade)
-				write_stream("connection: upgrade\r\nupgrade: #{upgrade}\r\n")
+				write_header(CONNECTION, "upgrade")
+				write_header(UPGRADE, upgrade)
 			end
 			
 			# Indicates whether the connection has been hijacked meaning its IO has been handed over and is not usable anymore.
@@ -263,7 +264,7 @@ module Protocol
 				open!
 				
 				write_stream("#{method} #{target} #{version}\r\n")
-				write_stream("host: #{authority}\r\n") if authority
+				write_header(HOST, authority) if authority
 				
 				write_headers(headers)
 			rescue
@@ -311,27 +312,36 @@ module Protocol
 				flush_stream
 			end
 			
+			# Write a header to the connection, rejecting CR, LF, and NUL in its value.
+			#
+			# @parameter name [String] the header name.
+			# @parameter value [String] the header value.
+			# @raises [BadHeader] if the header name or value is invalid.
+			def write_header(name, value)
+				# Convert it to a string:
+				name = name.to_s
+				value = value.to_s
+				
+				# Validate it:
+				unless name.match?(VALID_FIELD_NAME)
+					raise BadHeader, "Invalid header name: #{name.inspect}"
+				end
+				
+				unless value.match?(VALID_FIELD_VALUE)
+					raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
+				end
+				
+				# Write it:
+				write_stream("#{name}: #{value}\r\n")
+			end
+			
 			# Write headers to the connection.
 			#
 			# @parameter headers [Hash] the headers to write.
 			# @raises [BadHeader] if the header name or value is invalid.
 			def write_headers(headers)
 				headers.each do |name, value|
-					# Convert it to a string:
-					name = name.to_s
-					value = value.to_s
-					
-					# Validate it:
-					unless name.match?(VALID_FIELD_NAME)
-						raise BadHeader, "Invalid header name: #{name.inspect}"
-					end
-					
-					unless value.match?(VALID_FIELD_VALUE)
-						raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
-					end
-					
-					# Write it:
-					write_stream("#{name}: #{value}\r\n")
+					write_header(name, value)
 				end
 			end
 			
