@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
 	spec.license = "MIT"
 	
 	spec.cert_chain  = ["release.cert"]
-	spec.signing_key = File.expand_path("~/.gem/release.pem")
+	spec.signing_key = File.expand_path("~/.gem/socketry-release.pem")
 	
 	spec.homepage = "https://github.com/socketry/protocol-http1"
 	
@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 		"source_code_uri" => "https://github.com/socketry/protocol-http1.git",
 	}
 	
-	spec.files = Dir.glob(["{context,lib}/**/*", "*.md"], File::FNM_DOTMATCH, base: __dir__)
+	spec.files = Dir.glob(["{context,lib}/**/*", "*.md", "release.cert"], File::FNM_DOTMATCH, base: __dir__)
 	
 	spec.required_ruby_version = ">= 3.3"
 	
