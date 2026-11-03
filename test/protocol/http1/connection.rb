@@ -156,6 +156,75 @@ describe Protocol::HTTP1::Connection do
 			expect(server).to be(:persistent)
 		end
 		
+		it "reads request with chunked body and trailer" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\nTrailer: etag\r\n\r\nb\r\nHello World\r\n0\r\nETag: abcd\r\n\r\n"
+			client.stream.close
+			
+			authority, method, target, version, headers, body = server.read_request
+			
+			expect(body.join).to be == "Hello World"
+			expect(headers).to be == {"trailer" => ["etag"], "etag" => "abcd"}
+			
+			expect(server).to be(:persistent)
+		end
+		
+		it "fails with HTTP/1.0 request with transfer-encoding" do
+			# RFC 9112 Section 6.1: a recipient MUST treat an HTTP/1.0 message containing Transfer-Encoding as faulty framing.
+			client.stream.write "GET / HTTP/1.0\r\nHost: localhost\r\nConnection: keep-alive\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /HTTP\/1.0/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with HTTP/1.0 request with transfer-encoding and content-length" do
+			client.stream.write "GET / HTTP/1.0\r\nHost: localhost\r\nContent-Length: 11\r\nTransfer-Encoding: chunked\r\n\r\nHello World"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with request whose final transfer-encoding is not chunked" do
+			# RFC 9112 Section 6.3: the server MUST respond with 400 and close the connection, since the body length cannot be determined reliably.
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: gzip\r\n\r\nHello World"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /chunked/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with request where chunked is not the final transfer-encoding" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked, gzip\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with request containing both transfer-encoding and content-length" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
 		it "reads request with CONNECT method" do
 			client.stream.write "CONNECT localhost:443 HTTP/1.1\r\nHost: localhost\r\n\r\n"
 			client.stream.close
@@ -332,6 +401,46 @@ describe Protocol::HTTP1::Connection do
 			end
 			
 			expect(result).to be == :yielded
+		end
+		
+		it "should read chunked response" do
+			client.open!
+			
+			server.stream.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(headers).to be == {}
+			expect(body.join).to be == "Hello World"
+			expect(client).to be(:persistent)
+		end
+		
+		it "should read response with non-chunked transfer-encoding until closed" do
+			client.open!
+			
+			# RFC 9112 Section 6.3: for a response, the body is delimited by closing the connection.
+			server.stream.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip\r\n\r\nHello World")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
+			expect(body.join).to be == "Hello World"
+			expect(client).not.to be(:persistent)
+		end
+		
+		it "should fail with HTTP/1.0 response with transfer-encoding" do
+			client.open!
+			
+			server.stream.write("HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n")
+			server.stream.close
+			
+			expect do
+				client.read_response("GET")
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /HTTP\/1.0/)
+			
+			expect(client).not.to be(:persistent)
 		end
 	end
 	

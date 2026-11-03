@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Reject `transfer-encoding` in HTTP/1.0 messages and requests whose final transfer coding is not `chunked` with `BadRequest`, and mark the connection as non-persistent, as required by RFC 9112 for reliable message framing.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
