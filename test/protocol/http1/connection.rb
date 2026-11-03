@@ -427,6 +427,69 @@ describe Protocol::HTTP1::Connection do
 			expect(headers).to have_keys("etag")
 		end
 		
+		it "can generate and read trailer from headers instance" do
+			response_headers = Protocol::HTTP::Headers.new([["trailer", "etag"]])
+			server.write_headers(response_headers)
+			
+			# Mark the start of the trailer, and add a field to it, as a server would while generating the body:
+			trailer = response_headers.trailer!
+			response_headers.add("etag", "abcd")
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			
+			headers = client.read_headers
+			body = client.read_body(headers, false)
+			expect(body.join).to be == chunks.join
+			
+			expect(headers["etag"]).to be == "abcd"
+		end
+		
+		with "invalid trailer" do
+			# Everything the server wrote, so we can confirm forbidden fields never reach the wire:
+			let(:written) {sockets.first.read}
+			
+			it "rejects content-length in a hash trailer" do
+				expect do
+					server.write_chunked_body(body, false, {"content-length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError, message: be =~ /content-length/)
+				
+				server.close
+				
+				# Neither the terminal chunk nor the forbidden field is written:
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
+			end
+			
+			it "rejects transfer-encoding in a hash trailer" do
+				expect do
+					server.write_chunked_body(body, false, {"transfer-encoding" => "chunked"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError, message: be =~ /transfer-encoding/)
+				
+				server.close
+				
+				expect(written).not.to be(:include?, "0\r\ntransfer-encoding")
+			end
+			
+			it "rejects forbidden fields regardless of case" do
+				expect do
+					server.write_chunked_body(body, false, {"Content-Length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+			end
+			
+			it "rejects forbidden fields from an arbitrary enumerable" do
+				trailer = [["etag", "abcd"], ["content-length", "5"]]
+				
+				expect do
+					server.write_chunked_body(body, false, trailer)
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+				
+				server.close
+				
+				# The valid field preceding the invalid one must not have been written either:
+				expect(written).not.to be(:include?, "etag")
+			end
+		end
+		
 		with "HEAD request" do
 			it "can generate and read chunked response" do
 				server.write_chunked_body(body, true)

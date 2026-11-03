@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Validate trailer fields in `write_chunked_body` against the header policy, so framing fields such as `content-length` and `transfer-encoding` are rejected with `Protocol::HTTP::InvalidTrailerError` rather than written to the wire, regardless of the trailer collection type.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
