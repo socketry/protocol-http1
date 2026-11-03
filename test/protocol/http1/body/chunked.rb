@@ -126,6 +126,41 @@ describe Protocol::HTTP1::Body::Chunked do
 				
 				expect(connection).to be(:half_closed_remote?)
 			end
+			
+			it "does not merge trailers into the header section" do
+				headers.add("trailer", "etag")
+				
+				expect(headers).not.to be(:trailer?)
+				
+				body.join
+				
+				expect(headers).to be(:trailer?)
+				expect(headers.header.to_a).to be == [["trailer", "etag"]]
+				expect(headers.trailer.to_a).to be == [["ETag", "abcd"]]
+			end
+			
+			it "preserves the trailer section if it was already marked" do
+				headers.add("trailer", "etag")
+				headers.trailer!
+				
+				body.join
+				
+				expect(headers.header.to_a).to be == [["trailer", "etag"]]
+				expect(headers.trailer.to_a).to be == [["ETag", "abcd"]]
+			end
+		end
+		
+		with "trailer not announced in header section" do
+			let(:postfix) {"x-forwarded-host: evil\r\n"}
+			
+			it "does not merge trailers into the header section" do
+				headers.add("etag", "abcd")
+				
+				body.join
+				
+				expect(headers.header.to_a).to be == [["etag", "abcd"]]
+				expect(headers.trailer.to_a).to be == [["x-forwarded-host", "evil"]]
+			end
 		end
 		
 		with "incomplete trailer" do

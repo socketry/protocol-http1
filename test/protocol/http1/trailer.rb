@@ -51,5 +51,24 @@ describe Protocol::HTTP1::Connection do
 			# Headers are updated:
 			expect(headers).to be == {"foo" => ["bar"]}
 		end
+		
+		it "keeps received trailers separate from the header section" do
+			expect(body).to receive(:length).and_return(nil)
+			trailer["foo"] = "bar"
+			
+			server.write_response("HTTP/1.1", 200, {"etag" => "abcd"})
+			server.write_body("HTTP/1.1", body, false, trailer)
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(headers).not.to be(:trailer?)
+			expect(headers.header.to_a).to be == [["etag", "abcd"]]
+			
+			body.join
+			
+			expect(headers).to be(:trailer?)
+			expect(headers.header.to_a).to be == [["etag", "abcd"]]
+			expect(headers.trailer.to_a).to be == [["foo", "bar"]]
+		end
 	end
 end

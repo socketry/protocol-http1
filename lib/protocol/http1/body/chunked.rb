@@ -148,7 +148,11 @@ module Protocol
 				private
 				
 				# Read the trailer from the connection, and add any headers to the trailer.
+				#
+				# The trailer section is marked before any fields are added, so that `headers.header` and `headers.trailer` remain distinct. A recipient must not merge trailer fields into the header section (RFC 9110, Section 6.5.2). If the trailer section was already marked, this is a no-op.
 				def read_trailer
+					@headers.trailer!
+					
 					while line = @connection.read_line
 						# Empty line indicates end of trailer:
 						break if line.empty?

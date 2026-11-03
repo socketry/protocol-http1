@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - Keep received chunked trailers in the trailer section of the headers, rather than merging them into the header section.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.
