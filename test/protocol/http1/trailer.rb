@@ -64,8 +64,8 @@ describe Protocol::HTTP1::Connection do
 			
 			server.close
 			
-			# The forbidden trailer must never reach the client:
-			expect(sockets.first.read).not.to be(:include?, "content-length")
+			# The forbidden trailer must never reach the client, and neither must the terminal chunk:
+			expect(sockets.first.read).to be == "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
 		end
 	end
 end

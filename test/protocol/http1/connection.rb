@@ -477,7 +477,7 @@ describe Protocol::HTTP1::Connection do
 				
 				server.close
 				
-				expect(written).not.to be(:include?, "0\r\ntransfer-encoding")
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
 			end
 			
 			it "rejects forbidden fields regardless of case" do
@@ -496,7 +496,7 @@ describe Protocol::HTTP1::Connection do
 				server.close
 				
 				# The valid field preceding the invalid one must not have been written either:
-				expect(written).not.to be(:include?, "etag")
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
 			end
 		end
 		
