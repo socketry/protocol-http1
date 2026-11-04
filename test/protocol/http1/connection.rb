@@ -181,7 +181,7 @@ describe Protocol::HTTP1::Connection do
 		end
 		
 		it "fails with HTTP/1.0 request with transfer-encoding and content-length" do
-			client.stream.write "GET / HTTP/1.0\r\nHost: localhost\r\nContent-Length: 11\r\nTransfer-Encoding: chunked\r\n\r\nHello World"
+			client.stream.write "GET / HTTP/1.0\r\nHost: localhost\r\nConnection: keep-alive\r\nContent-Length: 11\r\nTransfer-Encoding: chunked\r\n\r\nHello World"
 			client.stream.close
 			
 			expect do
@@ -623,6 +623,31 @@ describe Protocol::HTTP1::Connection do
 			it "should ignore body for informational responses" do
 				expect(client.read_response_body("CONNECT", 200, {})).to be_a(Protocol::HTTP1::Body::Remainder)
 			end
+		end
+	end
+	
+	with "#read_body" do
+		# Callers using the original signature do not pass a version, so framing must still be validated without it.
+		it "reads chunked request body without a version" do
+			body = server.read_body({"transfer-encoding" => ["chunked"]}, false)
+			
+			expect(body).to be_a(Protocol::HTTP1::Body::Chunked)
+			expect(server).to be(:persistent)
+		end
+		
+		it "fails with non-chunked request transfer-encoding without a version" do
+			expect do
+				server.read_body({"transfer-encoding" => ["gzip"]}, false)
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /must be chunked/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "reads non-chunked response transfer-encoding until closed without a version" do
+			body = client.read_body({"transfer-encoding" => ["gzip"]}, true)
+			
+			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
+			expect(client).not.to be(:persistent)
 		end
 	end
 	
