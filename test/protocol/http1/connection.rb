@@ -427,7 +427,7 @@ describe Protocol::HTTP1::Connection do
 			expect(headers).to have_keys("etag")
 		end
 		
-		it "can generate and read trailer from headers instance" do
+		it "can generate and read trailer from headers trailer enumerator" do
 			response_headers = Protocol::HTTP::Headers.new([["trailer", "etag"]])
 			server.write_headers(response_headers)
 			
