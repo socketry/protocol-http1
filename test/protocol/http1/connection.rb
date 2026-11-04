@@ -214,6 +214,41 @@ describe Protocol::HTTP1::Connection do
 			expect(server).not.to be(:persistent)
 		end
 		
+		it "fails with request where chunked is preceded by another transfer-encoding" do
+			# RFC 9112 Section 6.1: a server that receives a transfer coding it does not understand SHOULD reject the request, rather than silently handing the application a still-encoded body.
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: gzip, chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /must be chunked/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with request with duplicate chunked transfer-encoding" do
+			# RFC 9112 Section 7.1: chunked MUST NOT be applied more than once to a message body.
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked, chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /more than once/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
+		it "fails with request with multiple chunked transfer-encoding headers" do
+			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
+			client.stream.close
+			
+			expect do
+				server.read_request
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /more than once/)
+			
+			expect(server).not.to be(:persistent)
+		end
+		
 		it "fails with request containing both transfer-encoding and content-length" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n"
 			client.stream.close
@@ -427,6 +462,47 @@ describe Protocol::HTTP1::Connection do
 			
 			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
 			expect(body.join).to be == "Hello World"
+			expect(client).not.to be(:persistent)
+		end
+		
+		it "should read response where chunked is preceded by another transfer-encoding" do
+			client.open!
+			
+			# RFC 9112 Section 6.1: chunked is the final encoding, so the body is chunked; the application is responsible for the remaining gzip transfer coding.
+			server.stream.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(body).to be_a(Protocol::HTTP1::Body::Chunked)
+			expect(body.join).to be == "Hello World"
+			expect(client).to be(:persistent)
+		end
+		
+		it "should fail with response with duplicate chunked transfer-encoding" do
+			client.open!
+			
+			# RFC 9112 Section 7.1: chunked MUST NOT be applied more than once to a message body.
+			server.stream.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked, chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n")
+			server.stream.close
+			
+			expect do
+				client.read_response("GET")
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /more than once/)
+			
+			expect(client).not.to be(:persistent)
+		end
+		
+		it "should fail with response with multiple chunked transfer-encoding headers" do
+			client.open!
+			
+			server.stream.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nHello World\r\n0\r\n\r\n")
+			server.stream.close
+			
+			expect do
+				client.read_response("GET")
+			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /more than once/)
+			
 			expect(client).not.to be(:persistent)
 		end
 		

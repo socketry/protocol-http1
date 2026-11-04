@@ -1004,7 +1004,7 @@ module Protocol
 			# - Otherwise, if the `content-length` is present, the body is read until the content length is reached.
 			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
 			#
-			# Framing errors (e.g. `transfer-encoding` in an HTTP/1.0 message, or a request whose final transfer coding is not `chunked`) are rejected and mark the connection as non-persistent, since the remainder of the stream can no longer be delimited reliably.
+			# Framing errors (e.g. `transfer-encoding` in an HTTP/1.0 message, `chunked` applied more than once, or a request whose transfer coding is anything other than exactly `chunked`) are rejected and mark the connection as non-persistent, since the remainder of the stream can no longer be delimited reliably.
 			#
 			# @parameter headers [Hash] the headers of the message.
 			# @parameter remainder [Boolean] whether to read the remainder of the body, i.e. the message is a response which may be delimited by closing the connection.
@@ -1038,22 +1038,41 @@ module Protocol
 						raise BadRequest, "Message contains both transfer encoding and content length!"
 					end
 					
-					if transfer_encoding.last == CHUNKED
-						return read_chunked_body(headers)
-					elsif remainder
-						# If a Transfer-Encoding header field is present in a response and
-						# the chunked transfer coding is not the final encoding, the
-						# message body length is determined by reading the connection until
-						# it is closed by the server.
-						return read_remainder_body
-					else
-						# If a Transfer-Encoding header field is present in a request and
-						# the chunked transfer coding is not the final encoding, the
-						# message body length cannot be determined reliably; the server
-						# MUST respond with the 400 (Bad Request) status code and then
-						# close the connection.
+					# A sender MUST NOT apply the chunked transfer coding more than once
+					# to a message body (RFC 9112 Section 7.1). Duplicate codings would
+					# require decoding the body twice, which we do not support, so the
+					# framing cannot be trusted.
+					if transfer_encoding.count(CHUNKED) > 1
 						@persistent = false
-						raise BadRequest, "Request transfer encoding does not end with chunked: #{transfer_encoding.inspect}"
+						raise BadRequest, "Message contains chunked transfer encoding more than once: #{transfer_encoding.inspect}"
+					end
+					
+					if remainder
+						if transfer_encoding.last == CHUNKED
+							return read_chunked_body(headers)
+						else
+							# If a Transfer-Encoding header field is present in a response and
+							# the chunked transfer coding is not the final encoding, the
+							# message body length is determined by reading the connection until
+							# it is closed by the server.
+							return read_remainder_body
+						end
+					else
+						# A request body may only use the chunked transfer coding on its
+						# own: we do not decode any other transfer coding, and a server
+						# that receives a transfer coding it does not understand SHOULD
+						# respond with 501 (Not Implemented) (RFC 9112 Section 6.1). If
+						# chunked is not the final encoding, the message body length cannot
+						# be determined reliably; the server MUST respond with the 400 (Bad
+						# Request) status code and then close the connection. In both cases
+						# the header is consumed here, so accepting the body would hand the
+						# application an encoded body with no indication of the coding.
+						if transfer_encoding == [CHUNKED]
+							return read_chunked_body(headers)
+						else
+							@persistent = false
+							raise BadRequest, "Request transfer encoding must be chunked: #{transfer_encoding.inspect}"
+						end
 					end
 				end
 				
