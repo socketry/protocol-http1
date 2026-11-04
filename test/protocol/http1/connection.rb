@@ -293,6 +293,29 @@ describe Protocol::HTTP1::Connection do
 			end.to raise_exception(Protocol::HTTP1::InvalidRequest)
 		end
 		
+		["HTTP/0.9", "HTTP/2.0", "HTTP/1x1", "http/1.1"].each do |version|
+			it "fails with unsupported version #{version}", unique: version do
+				client.stream.write "GET / #{version}\r\nHost: localhost\r\n\r\n"
+				client.stream.close
+				
+				expect do
+					server.read_request
+				end.to raise_exception(Protocol::HTTP1::InvalidRequest)
+			end
+		end
+		
+		it "reads request with unknown HTTP/1.x minor version" do
+			# RFC 9110 Section 2.5: a recipient treats an unknown minor version as the highest minor version it supports.
+			client.stream.write "GET / HTTP/1.2\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
+			client.stream.close
+			
+			authority, method, target, version, headers, body = server.read_request
+			
+			expect(version).to be == "HTTP/1.2"
+			expect(body).to be_nil
+			expect(server).to be(:persistent)
+		end
+		
 		it "yields to block" do
 			client.stream.write "GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
 			client.stream.close
@@ -436,6 +459,33 @@ describe Protocol::HTTP1::Connection do
 			end
 			
 			expect(result).to be == :yielded
+		end
+		
+		["http/1.1", "HTTP/2.0", "HTTP/1x1", "HTTP/0.9"].each do |version|
+			it "should fail with unsupported version #{version}", unique: version do
+				client.open!
+				
+				# RFC 9112 Section 2.3: the HTTP-version is case-sensitive.
+				server.stream.write("#{version} 200 OK\r\nContent-Length: 0\r\n\r\n")
+				server.stream.close
+				
+				expect do
+					client.read_response("GET")
+				end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /version/)
+			end
+		end
+		
+		it "should read response with unknown HTTP/1.x minor version" do
+			client.open!
+			
+			server.stream.write("HTTP/1.2 200 OK\r\nContent-Length: 0\r\n\r\n")
+			server.stream.close
+			
+			version, status, reason, headers, body = client.read_response("GET")
+			
+			expect(version).to be == "HTTP/1.2"
+			expect(status).to be == 200
+			expect(body).to be_nil
 		end
 		
 		it "should read chunked response" do

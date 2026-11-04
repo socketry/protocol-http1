@@ -4,6 +4,7 @@
 
   - Reject `transfer-encoding` in HTTP/1.0 messages and requests whose final transfer coding is not `chunked` with `BadRequest`, and mark the connection as non-persistent, as required by RFC 9112 for reliable message framing.
   - Reject requests whose `transfer-encoding` is anything other than exactly `chunked` (e.g. `gzip, chunked`), since no other transfer coding is decoded and the application would otherwise receive a still-encoded body. Reject any message that applies `chunked` more than once, including across multiple `transfer-encoding` headers.
+  - Only accept `HTTP/1.x` versions (case-sensitive) in request lines (`InvalidRequest`) and response status lines (`BadRequest`). Previously versions such as `HTTP/2.0`, `HTTP/0.9`, `HTTP/1x1` or `http/1.1` were accepted and treated as HTTP/1.1.
 
 ## v0.41.0
 

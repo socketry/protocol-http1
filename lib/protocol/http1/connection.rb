@@ -34,7 +34,10 @@ module Protocol
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
 		VALID_METHOD = /\A#{TOKEN}\z/.freeze
-		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
+		# The HTTP-version is case-sensitive (RFC 9112 Section 2.3). Only the HTTP/1.x family is accepted; any minor version is treated as HTTP/1.1 (RFC 9110 Section 2.5):
+		HTTP_VERSION = /HTTP\/1\.\d/.freeze
+		VALID_HTTP_VERSION = /\A#{HTTP_VERSION}\z/.freeze
+		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (#{HTTP_VERSION})\z/.freeze
 		
 		# HTTP/1.x header parser:
 		FIELD_NAME = TOKEN
@@ -418,6 +421,7 @@ module Protocol
 			# Read a request line from the connection.
 			#
 			# @returns [Tuple(String, String, String) | Nil] the method, path, and version of the request, or nil if the connection is closed.
+			# @raises [InvalidRequest] if the request line is malformed, including when the HTTP version is not `HTTP/1.x`.
 			def read_request_line
 				return unless line = read_line?
 				
@@ -470,8 +474,13 @@ module Protocol
 			#
 			# @returns [Tuple(String, Integer, String)] the version, status, and reason of the response.
 			# @raises [EOFError] if the connection is closed.
+			# @raises [BadRequest] if the HTTP version is not `HTTP/1.x`.
 			def read_response_line
 				version, status, reason = read_line.split(/\s+/, 3)
+				
+				unless version&.match?(VALID_HTTP_VERSION)
+					raise BadRequest, "Invalid response version: #{version.inspect}"
+				end
 				
 				status = Integer(status)
 				
