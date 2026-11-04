@@ -112,6 +112,36 @@ describe Protocol::HTTP1::Body::Chunked do
 			expect{body.read}.to raise_exception(Protocol::HTTP1::BadRequest)
 		end
 		
+		with "empty trailer section" do
+			it "does not mark the trailer section" do
+				headers.add("etag", "abcd")
+				
+				body.join
+				
+				expect(headers).not.to be(:trailer?)
+				expect(headers.header.to_a).to be == [["etag", "abcd"]]
+				expect(headers.trailer.to_a).to be == []
+			end
+			
+			it "does not modify frozen headers" do
+				headers.add("etag", "abcd")
+				headers.freeze
+				
+				expect(body.join).to be == "Hello World"
+				
+				expect(headers).not.to be(:trailer?)
+				expect(connection).to be(:half_closed_remote?)
+			end
+			
+			it "allows headers to be added after the body is read" do
+				body.join
+				
+				headers.add("content-type", "text/plain")
+				
+				expect(headers.header.to_a).to be == [["content-type", "text/plain"]]
+			end
+		end
+		
 		with "trailer" do
 			let(:postfix) {"ETag: abcd\r\n"}
 			

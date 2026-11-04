@@ -149,15 +149,15 @@ module Protocol
 				
 				# Read the trailer from the connection, and add any headers to the trailer.
 				#
-				# The trailer section is marked before any fields are added, so that `headers.header` and `headers.trailer` remain distinct. A recipient must not merge trailer fields into the header section (RFC 9110, Section 6.5.2). If the trailer section was already marked, this is a no-op.
+				# The trailer section is marked before the first field is added, so that `headers.header` and `headers.trailer` remain distinct. A recipient must not merge trailer fields into the header section (RFC 9110, Section 6.5.2). If no trailer fields are received, which is the common case, the headers are left untouched, so an empty trailer section does not change `headers.trailer?` and does not fail on frozen headers. If the trailer section was already marked, marking it again is a no-op.
 				def read_trailer
-					@headers.trailer!
-					
 					while line = @connection.read_line
 						# Empty line indicates end of trailer:
 						break if line.empty?
 						
 						if match = line.match(HEADER)
+							# Mark the start of the trailer section (no-op if already marked):
+							@headers.trailer!
 							@headers.add(match[1], match[2], trailer: true)
 						else
 							raise BadHeader, "Could not parse header: #{line.inspect}"
