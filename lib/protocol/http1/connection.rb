@@ -378,7 +378,7 @@ module Protocol
 			#
 			# Fields are validated against {Protocol::HTTP::Headers::POLICY} regardless of the type of the collection, since a plain `Hash` (unlike `Protocol::HTTP::Headers#add`) does not enforce the trailer policy. The entire section is validated before any of it is written, so that a forbidden field such as `content-length` or `transfer-encoding` can never reach the wire, even partially.
 			#
-			# @parameter trailer [Hash | Protocol::HTTP::Headers] the trailer fields to format.
+			# @parameter trailer [Hash | Enumerable] the trailer fields to format, as `[name, value]` pairs, e.g. a `Hash` or the enumerator returned by `Protocol::HTTP::Headers#trailer!`.
 			# @returns [String] the formatted trailer section.
 			# @raises [Protocol::HTTP::InvalidTrailerError] if a field is not permitted in a trailer.
 			# @raises [BadHeader] if a header name or value is invalid.
@@ -726,7 +726,7 @@ module Protocol
 			#
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
-			# @parameter trailer [Hash | Nil] the trailers to write.
+			# @parameter trailer [Hash | Enumerable | Nil] the trailers to write, as `[name, value]` pairs.
 			# @raises [Protocol::HTTP::InvalidTrailerError] if a trailer field is not permitted in a trailer.
 			def write_chunked_body(body, head, trailer = nil)
 				write_stream("transfer-encoding: chunked\r\n\r\n")
@@ -830,7 +830,7 @@ module Protocol
 			# @parameter version [String] the HTTP version.
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
-			# @parameter trailer [Hash | Nil] the trailers to write.
+			# @parameter trailer [Hash | Enumerable | Nil] the trailers to write, as `[name, value]` pairs.
 			def write_body(version, body, head = false, trailer = nil)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
