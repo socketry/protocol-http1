@@ -172,11 +172,13 @@ describe Protocol::HTTP1::Body::Chunked do
 			it "preserves the trailer section if it was already marked" do
 				headers.add("trailer", "etag")
 				headers.trailer!
+				headers.add("x-sent", "1", trailer: true)
 				
 				body.join
 				
+				# The existing trailer field is retained, so the trailer section was not re-marked:
 				expect(headers.header.to_a).to be == [["trailer", "etag"]]
-				expect(headers.trailer.to_a).to be == [["ETag", "abcd"]]
+				expect(headers.trailer.to_a).to be == [["x-sent", "1"], ["ETag", "abcd"]]
 			end
 		end
 		
