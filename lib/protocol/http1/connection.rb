@@ -383,7 +383,7 @@ module Protocol
 			# @raises [Protocol::HTTP::InvalidTrailerError] if a field is not permitted in a trailer.
 			# @raises [BadHeader] if a header name or value is invalid.
 			def format_trailer(trailer)
-				buffer = String.new
+				buffer = String.new(encoding: Encoding::BINARY)
 				
 				trailer.each do |name, value|
 					# A policy of `false` indicates a single-valued header, which is never permitted as a trailer:
@@ -393,7 +393,8 @@ module Protocol
 						raise HTTP::InvalidTrailerError, name
 					end
 					
-					buffer << format_header(name, value)
+					# Appending to an empty string adopts the encoding of the argument, so each line is coerced to binary to avoid incompatible encodings between fields:
+					buffer << format_header(name, value).b
 				end
 				
 				buffer << CRLF

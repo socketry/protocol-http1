@@ -445,6 +445,16 @@ describe Protocol::HTTP1::Connection do
 			expect(headers["etag"]).to be == "abcd"
 		end
 		
+		it "can write trailer values with mixed encodings" do
+			# A UTF-8 value with a non-ASCII character followed by a binary value with a high byte, which cannot be concatenated without coercion:
+			trailer = [["x-utf8", "héllo"], ["x-binary", "\xFF".b]]
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			
+			expect(sockets.first.read).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n0\r\nx-utf8: h\xC3\xA9llo\r\nx-binary: \xFF\r\n\r\n".b
+		end
+		
 		with "invalid trailer" do
 			# Everything the server wrote, so we can confirm forbidden fields never reach the wire:
 			let(:written) {sockets.first.read}
