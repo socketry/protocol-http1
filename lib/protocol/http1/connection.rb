@@ -981,7 +981,7 @@ module Protocol
 			# Read the body of the request.
 			#
 			# - The `CONNECT` method is used to establish a tunnel, so the body is read until the connection is closed.
-			# - The `UPGRADE` method is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed.
+			# - The `upgrade` header is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed. It is ignored in HTTP/1.0 requests, as required by RFC 9110 Section 7.8.
 			# - Otherwise, the body is read according to {read_body}.
 			#
 			# @parameter method [String] the HTTP method.
@@ -998,7 +998,9 @@ module Protocol
 				end
 				
 				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields.
-				if headers[UPGRADE]
+				#
+				# A server that receives an Upgrade header field in an HTTP/1.0 request MUST ignore that Upgrade field (RFC 9110 Section 7.8), so the body is framed according to the remaining headers instead.
+				if headers[UPGRADE] and version != HTTP10
 					return read_upgrade_body
 				end
 				
