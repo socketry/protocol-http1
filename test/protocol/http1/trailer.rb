@@ -71,4 +71,41 @@ describe Protocol::HTTP1::Connection do
 			expect(headers.trailer.to_a).to be == [["foo", "bar"]]
 		end
 	end
+	
+	with "request trailers" do
+		it "keeps received request trailers separate from the header section" do
+			expect(body).to receive(:length).and_return(nil)
+			trailer["x-forwarded-host"] = "evil"
+			
+			client.write_request("localhost", "POST", "/", "HTTP/1.1", {"content-type" => "text/plain"})
+			client.write_body("HTTP/1.1", body, false, trailer)
+			
+			authority, method, target, version, headers, body = server.read_request
+			
+			expect(method).to be == "POST"
+			expect(headers).not.to be(:trailer?)
+			expect(headers.header.to_a).to be == [["content-type", "text/plain"]]
+			
+			expect(body.join).to be == "HelloWorld"
+			
+			# Request trailers are controlled by the client, so they must not appear in the header section:
+			expect(headers).to be(:trailer?)
+			expect(headers.header.to_a).to be == [["content-type", "text/plain"]]
+			expect(headers.trailer.to_a).to be == [["x-forwarded-host", "evil"]]
+		end
+		
+		it "does not mark the trailer section when no request trailers are received" do
+			expect(body).to receive(:length).and_return(nil)
+			
+			client.write_request("localhost", "POST", "/", "HTTP/1.1", {"content-type" => "text/plain"})
+			client.write_body("HTTP/1.1", body)
+			
+			authority, method, target, version, headers, body = server.read_request
+			
+			expect(body.join).to be == "HelloWorld"
+			
+			expect(headers).not.to be(:trailer?)
+			expect(headers.header.to_a).to be == [["content-type", "text/plain"]]
+		end
+	end
 end
