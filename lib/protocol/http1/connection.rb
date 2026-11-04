@@ -441,6 +441,7 @@ module Protocol
 			# @yields {|host, method, path, version, headers, body| ...} if a block is given.
 			# @returns [Tuple(String, String, String, String, HTTP::Headers, Protocol::HTTP1::Body) | Nil] the host, method, path, version, headers, and body of the request, or `nil` if the connection is closed.
 			# @raises [ProtocolError] if the connection is not in the idle state.
+			# @raises [BadRequest] if the request line, headers, or body framing are invalid, e.g. an unsupported HTTP version, a malformed header, or a `transfer-encoding` that cannot be used to delimit the body.
 			def read_request
 				open!
 				
@@ -502,6 +503,7 @@ module Protocol
 			# @returns [Tuple(String, Integer, String, HTTP::Headers, Protocol::HTTP1::Body)] the version, status, reason, headers, and body of the response.
 			# @raises [ProtocolError] if the connection is not in the open or half-closed local state.
 			# @raises [EOFError] if the connection is closed.
+			# @raises [BadRequest] if the status line, headers, or body framing are invalid, e.g. an unsupported HTTP version, a malformed header, or a `transfer-encoding` that cannot be used to delimit the body.
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
 					raise ProtocolError, "Cannot read response in state: #{@state}!"
@@ -938,6 +940,8 @@ module Protocol
 			# @parameter status [Integer] the HTTP status code.
 			# @parameter headers [Hash] the headers of the response.
 			# @parameter version [String | Nil] the HTTP version of the response, if known.
+			# @returns [Object | Nil] the body, or `nil` if the response has no body.
+			# @raises [BadRequest] if the `content-length` is invalid or the message framing is invalid, see {read_body}.
 			def read_response_body(method, status, headers, version = nil)
 				# RFC 7230 3.3.3
 				# 1.  Any response to a HEAD request and any response with a 1xx
@@ -987,6 +991,8 @@ module Protocol
 			# @parameter method [String] the HTTP method.
 			# @parameter headers [Hash] the headers of the request.
 			# @parameter version [String | Nil] the HTTP version of the request, if known.
+			# @returns [Object | Nil] the body, or `nil` if the request has no body.
+			# @raises [BadRequest] if the `content-length` is invalid or the message framing is invalid, see {read_body}.
 			def read_request_body(method, headers, version = nil)
 				# 2.  Any 2xx (Successful) response to a CONNECT request implies that
 				# the connection will become a tunnel immediately after the empty
@@ -1016,6 +1022,8 @@ module Protocol
 			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
 			#
 			# Framing errors (e.g. `transfer-encoding` in an HTTP/1.0 message, `chunked` applied more than once, or a request whose transfer coding is anything other than exactly `chunked`) are rejected and mark the connection as non-persistent, since the remainder of the stream can no longer be delimited reliably.
+			#
+			# Rejecting HTTP/1.0 responses with `transfer-encoding` follows RFC 9112 Section 6.1; browsers instead ignore the header and read until the connection is closed. If interoperability with such servers ever requires relaxing this, the correct relaxation is close-delimited reading via {read_remainder_body}, never chunked decoding, since an HTTP/1.0 peer cannot be relied upon to have applied the coding.
 			#
 			# @parameter headers [Hash] the headers of the message.
 			# @parameter remainder [Boolean] whether to read the remainder of the body, i.e. the message is a response which may be delimited by closing the connection.
