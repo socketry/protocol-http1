@@ -445,6 +445,31 @@ describe Protocol::HTTP1::Connection do
 			expect(headers["etag"]).to be == "abcd"
 		end
 		
+		it "can generate and read trailer added while the body is being written" do
+			response_headers = Protocol::HTTP::Headers.new([["trailer", "etag"]])
+			server.write_headers(response_headers)
+			
+			# As a server does, capture the trailer enumerator before writing the body, and add the field while the body is still being generated:
+			trailer = response_headers.trailer!
+			
+			body = Protocol::HTTP::Body::Writable.new
+			
+			writer = Thread.new do
+				chunks.each do |chunk|
+					body.write(chunk)
+				end
+				
+				response_headers.add("etag", "late")
+				body.close_write
+			end
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			writer.join
+			
+			expect(sockets.first.read).to be == "trailer: etag\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n0\r\netag: late\r\n\r\n"
+		end
+		
 		it "can write trailer values with mixed encodings" do
 			# A UTF-8 value with a non-ASCII character followed by a binary value with a high byte, which cannot be concatenated without coercion:
 			trailer = [["x-utf8", "héllo"], ["x-binary", "\xFF".b]]
