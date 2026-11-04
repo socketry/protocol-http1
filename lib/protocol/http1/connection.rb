@@ -710,6 +710,9 @@ module Protocol
 					end
 				end
 			rescue => error
+				# The body may have been partially written, so the connection can't be reused, even if the caller swallows the error:
+				@persistent = false
+				
 				raise
 			ensure
 				# Close the body after the response is fully flushed, so that completion callbacks run after the client has received the response:
@@ -760,6 +763,9 @@ module Protocol
 					flush_stream
 				end
 			rescue => error
+				# The body may have been partially written, so the connection can't be reused, even if the caller swallows the error:
+				@persistent = false
+				
 				raise
 			ensure
 				# Close the body after the complete chunked response (including terminal chunk) is flushed, so that completion callbacks don't block the client from seeing the response as complete:

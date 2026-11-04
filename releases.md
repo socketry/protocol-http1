@@ -3,6 +3,7 @@
 ## Unreleased
 
   - Validate trailer fields in `write_chunked_body` against the header policy, so framing fields such as `content-length` and `transfer-encoding` are rejected with `Protocol::HTTP::InvalidTrailerError` rather than written to the wire, regardless of the trailer collection type.
+  - Mark the connection as non-persistent when `write_chunked_body` or `write_fixed_length_body` fails, so a connection with a partially written body is never reused, even if the caller swallows the error.
 
 ## v0.41.0
 

@@ -523,6 +523,20 @@ describe Protocol::HTTP1::Connection do
 				# The valid field preceding the invalid one must not have been written either:
 				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
 			end
+			
+			it "prevents the connection from being reused" do
+				# As a server which has finished reading the request:
+				server.receive_end_stream!
+				expect(server).to be(:half_closed_remote?)
+				
+				expect do
+					server.write_chunked_body(body, false, {"content-length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+				
+				# The body was partially written, so even if the error is swallowed, the connection must not return to the idle state:
+				expect(server.persistent).to be == false
+				expect(server).to be(:closed?)
+			end
 		end
 		
 		with "HEAD request" do
@@ -564,6 +578,9 @@ describe Protocol::HTTP1::Connection do
 				expect do
 					server.write_fixed_length_body(body, 100, false)
 				end.to raise_exception(Protocol::HTTP1::ContentLengthError)
+				
+				# The body was partially written, so the connection can't be reused:
+				expect(server.persistent).to be == false
 			end
 		end
 		
@@ -572,6 +589,9 @@ describe Protocol::HTTP1::Connection do
 				expect do
 					server.write_fixed_length_body(body, 1, false)
 				end.to raise_exception(Protocol::HTTP1::ContentLengthError)
+				
+				# The body was partially written, so the connection can't be reused:
+				expect(server.persistent).to be == false
 			end
 		end
 		
