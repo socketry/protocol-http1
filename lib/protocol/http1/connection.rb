@@ -376,7 +376,7 @@ module Protocol
 			
 			# Format the trailer section of a chunked body, i.e. the fields following the terminal chunk, including the final empty line.
 			#
-			# Fields are validated against {Protocol::HTTP::Headers::POLICY} regardless of the type of the collection, since a plain `Hash` (unlike `Protocol::HTTP::Headers#add`) does not enforce the trailer policy. The entire section is validated before any of it is written, so that a forbidden field such as `content-length` or `transfer-encoding` can never reach the wire, even partially.
+			# Fields are validated against {Protocol::HTTP::Headers::POLICY} before any are written, since a plain `Hash` does not enforce the trailer policy.
 			#
 			# @parameter trailer [Hash | Enumerable] the trailer fields to format, as `[name, value]` pairs, e.g. a `Hash` or the enumerator returned by `Protocol::HTTP::Headers#trailer!`.
 			# @returns [String] the formatted trailer section.
