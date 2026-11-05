@@ -45,11 +45,12 @@ Traces::Provider(Protocol::HTTP1::Connection) do
 		end
 	end
 	
-	def write_body(version, body, head = false, trailer = nil)
+	def write_body(version, body, head = false, trailer = nil, request = false)
 		attributes = {
 			version: version,
 			head: head,
 			trailer: trailer,
+			request: request,
 			body: body&.as_json,
 		}
 		

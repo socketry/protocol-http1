@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - `Protocol::HTTP1::Connection#write_body` accepts a trailing `request` argument. When true, an HTTP/1.0 body of unknown length raises `ProtocolError` instead of being written close-delimited, which the server would read as the next request. Clients should pass it when writing request bodies.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.

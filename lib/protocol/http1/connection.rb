@@ -791,7 +791,9 @@ module Protocol
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
 			# @parameter trailer [Hash | Nil] the trailers to write.
-			def write_body(version, body, head = false, trailer = nil)
+			# @parameter request [Boolean] whether the body belongs to a request, which cannot be delimited by closing the connection.
+			# @raises [ProtocolError] if a request body has unknown length and the version does not support chunked encoding.
+			def write_body(version, body, head = false, trailer = nil, request = false)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
 					trailer = nil
@@ -815,7 +817,13 @@ module Protocol
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
 					write_chunked_body(body, head, trailer)
+				elsif request
+					# A request body cannot be delimited by closing the connection, as the server would read it as the next request:
+					error = ProtocolError.new("Cannot write #{version} request body of unknown length!")
+					body.close(error)
+					raise error
 				else
+					# Only a response body may be delimited by closing the connection:
 					@persistent = false
 					write_connection_header(version)
 					write_body_and_close(body, head)
