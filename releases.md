@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-  - `Protocol::HTTP1::Connection#write_body` accepts a trailing `request` argument; when true, an HTTP/1.0 body of unknown length raises `ProtocolError` instead of being written close-delimited, since a request body cannot be delimited by closing the connection and the server would otherwise parse it as the next request. Clients should pass `request = true` when writing request bodies (`async-http` is being updated accordingly); response bodies are unaffected.
+  - `Protocol::HTTP1::Connection#write_body` accepts a trailing `request` argument. When true, an HTTP/1.0 body of unknown length raises `ProtocolError` instead of being written close-delimited, which the server would read as the next request. Clients should pass it when writing request bodies.
 
 ## v0.41.0
 
