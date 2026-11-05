@@ -51,5 +51,21 @@ describe Protocol::HTTP1::Connection do
 			# Headers are updated:
 			expect(headers).to be == {"foo" => ["bar"]}
 		end
+		
+		it "rejects trailers which are not permitted by the header policy" do
+			expect(body).to receive(:length).and_return(nil)
+			trailer["content-length"] = "5"
+			
+			server.write_response("HTTP/1.1", 200, {})
+			
+			expect do
+				server.write_body("HTTP/1.1", body, false, trailer)
+			end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+			
+			server.close
+			
+			# The forbidden trailer must never reach the client, and neither must the terminal chunk:
+			expect(sockets.first.read).to be == "HTTP/1.1 200 OK\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
+		end
 	end
 end

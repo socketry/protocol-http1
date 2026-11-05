@@ -427,6 +427,118 @@ describe Protocol::HTTP1::Connection do
 			expect(headers).to have_keys("etag")
 		end
 		
+		it "can generate and read trailer from headers trailer enumerator" do
+			response_headers = Protocol::HTTP::Headers.new([["trailer", "etag"]])
+			server.write_headers(response_headers)
+			
+			# Mark the start of the trailer, and add a field to it, as a server would while generating the body:
+			trailer = response_headers.trailer!
+			response_headers.add("etag", "abcd")
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			
+			headers = client.read_headers
+			body = client.read_body(headers, false)
+			expect(body.join).to be == chunks.join
+			
+			expect(headers["etag"]).to be == "abcd"
+		end
+		
+		it "can generate and read trailer added while the body is being written" do
+			response_headers = Protocol::HTTP::Headers.new([["trailer", "etag"]])
+			server.write_headers(response_headers)
+			
+			# As a server does, capture the trailer enumerator before writing the body, and add the field while the body is still being generated:
+			trailer = response_headers.trailer!
+			
+			body = Protocol::HTTP::Body::Writable.new
+			
+			writer = Thread.new do
+				chunks.each do |chunk|
+					body.write(chunk)
+				end
+				
+				response_headers.add("etag", "late")
+				body.close_write
+			end
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			writer.join
+			
+			expect(sockets.first.read).to be == "trailer: etag\r\ntransfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n0\r\netag: late\r\n\r\n"
+		end
+		
+		it "can write trailer values with mixed encodings" do
+			# A UTF-8 value with a non-ASCII character followed by a binary value with a high byte, which cannot be concatenated without coercion:
+			trailer = [["x-utf8", "héllo"], ["x-binary", "\xFF".b]]
+			
+			server.write_chunked_body(body, false, trailer)
+			server.close
+			
+			expect(sockets.first.read).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n0\r\nx-utf8: h\xC3\xA9llo\r\nx-binary: \xFF\r\n\r\n".b
+		end
+		
+		with "invalid trailer" do
+			# Everything the server wrote, so we can confirm forbidden fields never reach the wire:
+			let(:written) {sockets.first.read}
+			
+			it "rejects content-length in a hash trailer" do
+				expect do
+					server.write_chunked_body(body, false, {"content-length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError, message: be =~ /content-length/)
+				
+				server.close
+				
+				# Neither the terminal chunk nor the forbidden field is written:
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
+			end
+			
+			it "rejects transfer-encoding in a hash trailer" do
+				expect do
+					server.write_chunked_body(body, false, {"transfer-encoding" => "chunked"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError, message: be =~ /transfer-encoding/)
+				
+				server.close
+				
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
+			end
+			
+			it "rejects forbidden fields regardless of case" do
+				expect do
+					server.write_chunked_body(body, false, {"Content-Length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+			end
+			
+			it "rejects forbidden fields from an arbitrary enumerable" do
+				trailer = [["etag", "abcd"], ["content-length", "5"]]
+				
+				expect do
+					server.write_chunked_body(body, false, trailer)
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+				
+				server.close
+				
+				# The valid field preceding the invalid one must not have been written either:
+				expect(written).to be == "transfer-encoding: chunked\r\n\r\n5\r\nHello\r\n5\r\nWorld\r\n"
+			end
+			
+			it "prevents the connection from being reused" do
+				# As a server which has finished reading the request:
+				server.receive_end_stream!
+				expect(server).to be(:half_closed_remote?)
+				
+				expect do
+					server.write_chunked_body(body, false, {"content-length" => "5"})
+				end.to raise_exception(Protocol::HTTP::InvalidTrailerError)
+				
+				# The body was partially written, so even if the error is swallowed, the connection must not return to the idle state:
+				expect(server.persistent).to be == false
+				expect(server).to be(:closed?)
+			end
+		end
+		
 		with "HEAD request" do
 			it "can generate and read chunked response" do
 				server.write_chunked_body(body, true)
@@ -466,6 +578,9 @@ describe Protocol::HTTP1::Connection do
 				expect do
 					server.write_fixed_length_body(body, 100, false)
 				end.to raise_exception(Protocol::HTTP1::ContentLengthError)
+				
+				# The body was partially written, so the connection can't be reused:
+				expect(server.persistent).to be == false
 			end
 		end
 		
@@ -474,6 +589,9 @@ describe Protocol::HTTP1::Connection do
 				expect do
 					server.write_fixed_length_body(body, 1, false)
 				end.to raise_exception(Protocol::HTTP1::ContentLengthError)
+				
+				# The body was partially written, so the connection can't be reused:
+				expect(server.persistent).to be == false
 			end
 		end
 		

@@ -332,12 +332,13 @@ module Protocol
 				flush_stream
 			end
 			
-			# Write a header to the connection, rejecting CR, LF, and NUL in its value.
+			# Format a header field as a single line, rejecting CR, LF, and NUL in its value.
 			#
 			# @parameter name [String] the header name.
 			# @parameter value [String] the header value.
+			# @returns [String] the formatted header line, including the trailing CRLF.
 			# @raises [BadHeader] if the header name or value is invalid.
-			def write_header(name, value)
+			def format_header(name, value)
 				# Convert it to a string:
 				name = name.to_s
 				value = value.to_s
@@ -351,8 +352,16 @@ module Protocol
 					raise BadHeader, "Invalid header value for #{name}: #{value.inspect}"
 				end
 				
-				# Write it:
-				write_stream("#{name}: #{value}\r\n")
+				return "#{name}: #{value}\r\n"
+			end
+			
+			# Write a header to the connection, rejecting CR, LF, and NUL in its value.
+			#
+			# @parameter name [String] the header name.
+			# @parameter value [String] the header value.
+			# @raises [BadHeader] if the header name or value is invalid.
+			def write_header(name, value)
+				write_stream(format_header(name, value))
 			end
 			
 			# Write headers to the connection.
@@ -363,6 +372,34 @@ module Protocol
 				headers.each do |name, value|
 					write_header(name, value)
 				end
+			end
+			
+			# Format the trailer section of a chunked body, i.e. the fields following the terminal chunk, including the final empty line.
+			#
+			# Fields are validated against {Protocol::HTTP::Headers::POLICY} before any are written, since a plain `Hash` does not enforce the trailer policy.
+			#
+			# @parameter trailer [Hash | Enumerable] the trailer fields to format, as `[name, value]` pairs, e.g. a `Hash` or the enumerator returned by `Protocol::HTTP::Headers#trailer!`.
+			# @returns [String] the formatted trailer section.
+			# @raises [Protocol::HTTP::InvalidTrailerError] if a field is not permitted in a trailer.
+			# @raises [BadHeader] if a header name or value is invalid.
+			def format_trailer(trailer)
+				buffer = String.new(encoding: Encoding::BINARY)
+				
+				trailer.each do |name, value|
+					# A policy of `false` indicates a single-valued header, which is never permitted as a trailer:
+					policy = HTTP::Headers::POLICY[name.to_s.downcase]
+					
+					unless policy and policy.trailer?
+						raise HTTP::InvalidTrailerError, name
+					end
+					
+					# Appending to an empty string adopts the encoding of the argument, so each line is coerced to binary to avoid incompatible encodings between fields:
+					buffer << format_header(name, value).b
+				end
+				
+				buffer << CRLF
+				
+				return buffer
 			end
 			
 			# Read some data from the connection.
@@ -673,6 +710,9 @@ module Protocol
 					end
 				end
 			rescue => error
+				# The body may have been partially written, so the connection can't be reused, even if the caller swallows the error:
+				@persistent = false
+				
 				raise
 			ensure
 				# Close the body after the response is fully flushed, so that completion callbacks run after the client has received the response:
@@ -689,7 +729,8 @@ module Protocol
 			#
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
-			# @parameter trailer [Hash | Nil] the trailers to write.
+			# @parameter trailer [Hash | Enumerable | Nil] the trailers to write, as `[name, value]` pairs.
+			# @raises [Protocol::HTTP::InvalidTrailerError] if a trailer field is not permitted in a trailer.
 			def write_chunked_body(body, head, trailer = nil)
 				write_stream("transfer-encoding: chunked\r\n\r\n")
 				
@@ -710,9 +751,11 @@ module Protocol
 					end
 					
 					if trailer&.any?
+						# Validate and format the entire trailer section before writing the terminal chunk, so that an invalid trailer is rejected rather than partially written:
+						trailer = format_trailer(trailer)
+						
 						write_stream("0\r\n")
-						write_headers(trailer)
-						write_stream("\r\n")
+						write_stream(trailer)
 					else
 						write_stream("0\r\n\r\n")
 					end
@@ -720,6 +763,9 @@ module Protocol
 					flush_stream
 				end
 			rescue => error
+				# The body may have been partially written, so the connection can't be reused, even if the caller swallows the error:
+				@persistent = false
+				
 				raise
 			ensure
 				# Close the body after the complete chunked response (including terminal chunk) is flushed, so that completion callbacks don't block the client from seeing the response as complete:
@@ -790,7 +836,7 @@ module Protocol
 			# @parameter version [String] the HTTP version.
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
-			# @parameter trailer [Hash | Nil] the trailers to write.
+			# @parameter trailer [Hash | Enumerable | Nil] the trailers to write, as `[name, value]` pairs.
 			def write_body(version, body, head = false, trailer = nil)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
