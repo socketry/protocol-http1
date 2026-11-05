@@ -6,6 +6,7 @@
   - Reject requests whose `transfer-encoding` is anything other than exactly `chunked` (e.g. `gzip, chunked`), since no other transfer coding is decoded and the application would otherwise receive a still-encoded body. Reject any message that applies `chunked` more than once, including across multiple `transfer-encoding` headers.
   - Only accept `HTTP/1.x` versions (case-sensitive) in request lines (`InvalidRequest`) and response status lines (`BadRequest`). Previously versions such as `HTTP/2.0`, `HTTP/0.9`, `HTTP/1x1` or `http/1.1` were accepted and treated as HTTP/1.1.
   - Ignore the `upgrade` header in HTTP/1.0 requests, as required by RFC 9110 Section 7.8, so the request body is framed by the remaining headers rather than being read until the connection is closed.
+  - `Protocol::HTTP1::Connection#read_body` takes `request` instead of `remainder` as its second argument, matching `write_body`. Callers passing `true` to read a response body should now pass `false`.
 
 ## v0.41.0
 
