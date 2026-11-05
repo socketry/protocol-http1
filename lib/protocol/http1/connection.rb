@@ -34,7 +34,10 @@ module Protocol
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
 		VALID_METHOD = /\A#{TOKEN}\z/.freeze
-		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (HTTP\/\d.\d)\z/.freeze
+		# The HTTP-version is case-sensitive, and only HTTP/1.x is accepted:
+		HTTP_VERSION = /HTTP\/1\.\d/.freeze
+		VALID_HTTP_VERSION = /\A#{HTTP_VERSION}\z/.freeze
+		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (#{HTTP_VERSION})\z/.freeze
 		
 		# HTTP/1.x header parser:
 		FIELD_NAME = TOKEN
@@ -418,6 +421,7 @@ module Protocol
 			# Read a request line from the connection.
 			#
 			# @returns [Tuple(String, String, String) | Nil] the method, path, and version of the request, or nil if the connection is closed.
+			# @raises [InvalidRequest] if the request line is malformed, including when the HTTP version is not `HTTP/1.x`.
 			def read_request_line
 				return unless line = read_line?
 				
@@ -437,6 +441,7 @@ module Protocol
 			# @yields {|host, method, path, version, headers, body| ...} if a block is given.
 			# @returns [Tuple(String, String, String, String, HTTP::Headers, Protocol::HTTP1::Body) | Nil] the host, method, path, version, headers, and body of the request, or `nil` if the connection is closed.
 			# @raises [ProtocolError] if the connection is not in the idle state.
+			# @raises [BadRequest] if the request line, headers, or body framing are invalid.
 			def read_request
 				open!
 				
@@ -451,7 +456,7 @@ module Protocol
 					@persistent = persistent?(version, method, headers)
 				end
 				
-				body = read_request_body(method, headers)
+				body = read_request_body(method, headers, version)
 				
 				unless body
 					self.receive_end_stream!
@@ -470,8 +475,13 @@ module Protocol
 			#
 			# @returns [Tuple(String, Integer, String)] the version, status, and reason of the response.
 			# @raises [EOFError] if the connection is closed.
+			# @raises [BadRequest] if the HTTP version is not `HTTP/1.x`.
 			def read_response_line
 				version, status, reason = read_line.split(/\s+/, 3)
+				
+				unless version&.match?(VALID_HTTP_VERSION)
+					raise BadRequest, "Invalid response version: #{version.inspect}"
+				end
 				
 				status = Integer(status)
 				
@@ -493,6 +503,7 @@ module Protocol
 			# @returns [Tuple(String, Integer, String, HTTP::Headers, Protocol::HTTP1::Body)] the version, status, reason, headers, and body of the response.
 			# @raises [ProtocolError] if the connection is not in the open or half-closed local state.
 			# @raises [EOFError] if the connection is closed.
+			# @raises [BadRequest] if the status line, headers, or body framing are invalid.
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
 					raise ProtocolError, "Cannot read response in state: #{@state}!"
@@ -507,7 +518,7 @@ module Protocol
 				end
 				
 				unless interim_status?(status)
-					body = read_response_body(method, status, headers)
+					body = read_response_body(method, status, headers, version)
 					
 					unless body
 						self.receive_end_stream!
@@ -928,7 +939,10 @@ module Protocol
 			# @parameter method [String] the HTTP method.
 			# @parameter status [Integer] the HTTP status code.
 			# @parameter headers [Hash] the headers of the response.
-			def read_response_body(method, status, headers)
+			# @parameter version [String | Nil] the HTTP version of the response, if known.
+			# @returns [Object | Nil] the body, or `nil` if the response has no body.
+			# @raises [BadRequest] if the `content-length` is invalid or the message framing is invalid, see {read_body}.
+			def read_response_body(method, status, headers, version = nil)
 				# RFC 7230 3.3.3
 				# 1.  Any response to a HEAD request and any response with a 1xx
 				# (Informational), 204 (No Content), or 304 (Not Modified) status
@@ -965,18 +979,21 @@ module Protocol
 					return read_tunnel_body
 				end
 				
-				return read_body(headers, true)
+				return read_body(headers, true, version)
 			end
 			
 			# Read the body of the request.
 			#
 			# - The `CONNECT` method is used to establish a tunnel, so the body is read until the connection is closed.
-			# - The `UPGRADE` method is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed.
+			# - The `upgrade` header is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed. It is ignored in HTTP/1.0 requests.
 			# - Otherwise, the body is read according to {read_body}.
 			#
 			# @parameter method [String] the HTTP method.
 			# @parameter headers [Hash] the headers of the request.
-			def read_request_body(method, headers)
+			# @parameter version [String | Nil] the HTTP version of the request, if known.
+			# @returns [Object | Nil] the body, or `nil` if the request has no body.
+			# @raises [BadRequest] if the `content-length` is invalid or the message framing is invalid, see {read_body}.
+			def read_request_body(method, headers, version = nil)
 				# 2.  Any 2xx (Successful) response to a CONNECT request implies that
 				# the connection will become a tunnel immediately after the empty
 				# line that concludes the header fields.  A client MUST ignore any
@@ -986,14 +1003,14 @@ module Protocol
 					return read_tunnel_body
 				end
 				
-				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields.
-				if headers[UPGRADE]
+				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields. An HTTP/1.0 request cannot upgrade (RFC 9110 Section 7.8):
+				if headers[UPGRADE] and version != HTTP10
 					return read_upgrade_body
 				end
 				
 				# 6.  If this is a request message and none of the above are true, then
 				# the message body length is zero (no message body is present).
-				return read_body(headers)
+				return read_body(headers, false, version)
 			end
 			
 			# Read the body of the message.
@@ -1002,15 +1019,28 @@ module Protocol
 			# - Otherwise, if the `content-length` is present, the body is read until the content length is reached.
 			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
 			#
+			# Invalid framing is rejected and marks the connection as non-persistent, since the rest of the stream can no longer be delimited.
+			#
 			# @parameter headers [Hash] the headers of the message.
-			# @parameter remainder [Boolean] whether to read the remainder of the body.
+			# @parameter remainder [Boolean] whether to read the remainder of the body, i.e. the message is a response which may be delimited by closing the connection.
+			# @parameter version [String | Nil] the HTTP version of the message, if known.
 			# @returns [Object] the body.
-			def read_body(headers, remainder = false)
+			# @raises [BadRequest] if the message framing is invalid.
+			def read_body(headers, remainder = false, version = nil)
 				# 3.  If a Transfer-Encoding header field is present and the chunked
 				# transfer coding (Section 4.1) is the final encoding, the message
 				# body length is determined by reading and decoding the chunked
 				# data until the transfer coding indicates the data is complete.
 				if transfer_encoding = headers.delete(TRANSFER_ENCODING)
+					# A server or client that receives an HTTP/1.0 message containing a
+					# Transfer-Encoding header field MUST treat the message as if the
+					# framing is faulty, even if a Content-Length is present, and close
+					# the connection after processing the message.
+					if version == HTTP10
+						@persistent = false
+						raise BadRequest, "HTTP/1.0 message contains transfer encoding!"
+					end
+					
 					# If a message is received with both a Transfer-Encoding and a
 					# Content-Length header field, the Transfer-Encoding overrides the
 					# Content-Length.  Such a message might indicate an attempt to
@@ -1019,21 +1049,45 @@ module Protocol
 					# remove the received Content-Length field prior to forwarding such
 					# a message downstream.
 					if headers[CONTENT_LENGTH]
+						@persistent = false
 						raise BadRequest, "Message contains both transfer encoding and content length!"
 					end
 					
-					if transfer_encoding.last == CHUNKED
-						return read_chunked_body(headers)
+					# A sender MUST NOT apply the chunked transfer coding more than once
+					# to a message body (RFC 9112 Section 7.1). Duplicate codings would
+					# require decoding the body twice, which we do not support, so the
+					# framing cannot be trusted.
+					if transfer_encoding.count(CHUNKED) > 1
+						@persistent = false
+						raise BadRequest, "Message contains chunked transfer encoding more than once: #{transfer_encoding.inspect}"
+					end
+					
+					if remainder
+						if transfer_encoding.last == CHUNKED
+							return read_chunked_body(headers)
+						else
+							# If a Transfer-Encoding header field is present in a response and
+							# the chunked transfer coding is not the final encoding, the
+							# message body length is determined by reading the connection until
+							# it is closed by the server.
+							return read_remainder_body
+						end
 					else
-						# If a Transfer-Encoding header field is present in a response and
-						# the chunked transfer coding is not the final encoding, the
-						# message body length is determined by reading the connection until
-						# it is closed by the server.  If a Transfer-Encoding header field
-						# is present in a request and the chunked transfer coding is not
-						# the final encoding, the message body length cannot be determined
-						# reliably; the server MUST respond with the 400 (Bad Request)
-						# status code and then close the connection.
-						return read_remainder_body
+						# A request body may only use the chunked transfer coding on its
+						# own: we do not decode any other transfer coding, and a server
+						# that receives a transfer coding it does not understand SHOULD
+						# respond with 501 (Not Implemented) (RFC 9112 Section 6.1). If
+						# chunked is not the final encoding, the message body length cannot
+						# be determined reliably; the server MUST respond with the 400 (Bad
+						# Request) status code and then close the connection. In both cases
+						# the header is consumed here, so accepting the body would hand the
+						# application an encoded body with no indication of the coding.
+						if transfer_encoding == [CHUNKED]
+							return read_chunked_body(headers)
+						else
+							@persistent = false
+							raise BadRequest, "Request transfer encoding must be chunked: #{transfer_encoding.inspect}"
+						end
 					end
 				end
 				
