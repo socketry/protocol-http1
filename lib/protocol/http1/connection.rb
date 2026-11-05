@@ -34,7 +34,7 @@ module Protocol
 		# HTTP/1.x request line parser:
 		TOKEN = /[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+/.freeze
 		VALID_METHOD = /\A#{TOKEN}\z/.freeze
-		# The HTTP-version is case-sensitive (RFC 9112 Section 2.3). Only the HTTP/1.x family is accepted; any minor version is treated as HTTP/1.1 (RFC 9110 Section 2.5):
+		# The HTTP-version is case-sensitive, and only HTTP/1.x is accepted:
 		HTTP_VERSION = /HTTP\/1\.\d/.freeze
 		VALID_HTTP_VERSION = /\A#{HTTP_VERSION}\z/.freeze
 		REQUEST_LINE = /\A(#{TOKEN}) ([^\s]+) (#{HTTP_VERSION})\z/.freeze
@@ -441,7 +441,7 @@ module Protocol
 			# @yields {|host, method, path, version, headers, body| ...} if a block is given.
 			# @returns [Tuple(String, String, String, String, HTTP::Headers, Protocol::HTTP1::Body) | Nil] the host, method, path, version, headers, and body of the request, or `nil` if the connection is closed.
 			# @raises [ProtocolError] if the connection is not in the idle state.
-			# @raises [BadRequest] if the request line, headers, or body framing are invalid, e.g. an unsupported HTTP version, a malformed header, or a `transfer-encoding` that cannot be used to delimit the body.
+			# @raises [BadRequest] if the request line, headers, or body framing are invalid.
 			def read_request
 				open!
 				
@@ -503,7 +503,7 @@ module Protocol
 			# @returns [Tuple(String, Integer, String, HTTP::Headers, Protocol::HTTP1::Body)] the version, status, reason, headers, and body of the response.
 			# @raises [ProtocolError] if the connection is not in the open or half-closed local state.
 			# @raises [EOFError] if the connection is closed.
-			# @raises [BadRequest] if the status line, headers, or body framing are invalid, e.g. an unsupported HTTP version, a malformed header, or a `transfer-encoding` that cannot be used to delimit the body.
+			# @raises [BadRequest] if the status line, headers, or body framing are invalid.
 			def read_response(method)
 				unless @state == :open or @state == :half_closed_local
 					raise ProtocolError, "Cannot read response in state: #{@state}!"
@@ -985,7 +985,7 @@ module Protocol
 			# Read the body of the request.
 			#
 			# - The `CONNECT` method is used to establish a tunnel, so the body is read until the connection is closed.
-			# - The `upgrade` header is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed. It is ignored in HTTP/1.0 requests, as required by RFC 9110 Section 7.8.
+			# - The `upgrade` header is used to upgrade the connection to a different protocol (typically WebSockets), so the body is read until the connection is closed. It is ignored in HTTP/1.0 requests.
 			# - Otherwise, the body is read according to {read_body}.
 			#
 			# @parameter method [String] the HTTP method.
@@ -1003,9 +1003,7 @@ module Protocol
 					return read_tunnel_body
 				end
 				
-				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields.
-				#
-				# A server that receives an Upgrade header field in an HTTP/1.0 request MUST ignore that Upgrade field (RFC 9110 Section 7.8), so the body is framed according to the remaining headers instead.
+				# A successful upgrade response implies that the connection will become a tunnel immediately after the empty line that concludes the header fields. An HTTP/1.0 request cannot upgrade (RFC 9110 Section 7.8):
 				if headers[UPGRADE] and version != HTTP10
 					return read_upgrade_body
 				end
@@ -1021,9 +1019,7 @@ module Protocol
 			# - Otherwise, if the `content-length` is present, the body is read until the content length is reached.
 			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
 			#
-			# Framing errors (e.g. `transfer-encoding` in an HTTP/1.0 message, `chunked` applied more than once, or a request whose transfer coding is anything other than exactly `chunked`) are rejected and mark the connection as non-persistent, since the remainder of the stream can no longer be delimited reliably.
-			#
-			# Rejecting HTTP/1.0 responses with `transfer-encoding` follows RFC 9112 Section 6.1; browsers instead ignore the header and read until the connection is closed. If interoperability with such servers ever requires relaxing this, the correct relaxation is close-delimited reading via {read_remainder_body}, never chunked decoding, since an HTTP/1.0 peer cannot be relied upon to have applied the coding.
+			# Invalid framing is rejected and marks the connection as non-persistent, since the rest of the stream can no longer be delimited.
 			#
 			# @parameter headers [Hash] the headers of the message.
 			# @parameter remainder [Boolean] whether to read the remainder of the body, i.e. the message is a response which may be delimited by closing the connection.
