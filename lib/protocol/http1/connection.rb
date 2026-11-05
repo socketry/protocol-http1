@@ -791,7 +791,9 @@ module Protocol
 			# @parameter body [Object] the body to write.
 			# @parameter head [Boolean] whether the request was a `HEAD` request.
 			# @parameter trailer [Hash | Nil] the trailers to write.
-			def write_body(version, body, head = false, trailer = nil)
+			# @parameter request [Boolean] whether the body belongs to a request. A request body cannot be delimited by closing the connection (RFC 9112 Section 6.3: a request with neither `content-length` nor `transfer-encoding` has a zero-length body, so the server would parse the body bytes as the start of the next request), so an HTTP/1.0 request body of unknown length raises rather than being written close-delimited; HTTP/1.0 clients must buffer such bodies to obtain a length.
+			# @raises [ProtocolError] if `request` is true and the body is an HTTP/1.0 body of unknown length, which cannot be framed. The body is closed with the error. The request head has already been written (without the terminating blank line) and the connection remains open, so the caller must either write a body with a known length or close the connection; calling `read_response` without doing so will deadlock.
+			def write_body(version, body, head = false, trailer = nil, request = false)
 				# HTTP/1.0 cannot in any case handle trailers.
 				if version == HTTP10 # or te: trailers was not present (strictly speaking not required.)
 					trailer = nil
@@ -815,7 +817,13 @@ module Protocol
 					write_connection_header(version)
 					# We specifically ensure that non-persistent connections do not use chunked response, so that hijacking works as expected.
 					write_chunked_body(body, head, trailer)
+				elsif request
+					# A request body cannot be delimited by closing the connection: per RFC 9112 Section 6.3, a request with neither `content-length` nor `transfer-encoding` has a zero-length body, so the server would treat the body bytes as the start of the next request. HTTP/1.0 does not support chunked encoding, so the body must be buffered to determine its length before writing the request.
+					error = ProtocolError.new("Cannot write #{version} request body of unknown length!")
+					body.close(error)
+					raise error
 				else
+					# Only a response body may be delimited by closing the connection:
 					@persistent = false
 					write_connection_header(version)
 					write_body_and_close(body, head)

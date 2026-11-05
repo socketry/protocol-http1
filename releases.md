@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+  - `write_body` now raises `ProtocolError` when writing an HTTP/1.0 request body of unknown length, rather than writing it without any framing. A request body cannot be delimited by closing the connection, so such bodies must be buffered to determine their length. HTTP/1.0 responses written after `write_response` are unaffected and continue to be delimited by closing the connection; calling `write_body` without first writing a request or response head is also rejected.
+
 ## v0.41.0
 
   - Map remote socket failures to `Protocol::HTTP::RemoteError` and prevent connection reuse.

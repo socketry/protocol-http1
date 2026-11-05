@@ -632,8 +632,32 @@ describe Protocol::HTTP1::Connection do
 			expect(body).to receive(:empty?).and_return(false)
 			expect(body).to receive(:length).and_return(nil)
 			
+			# Only a response body may be delimited by closing the connection:
 			expect(server).to receive(:write_body_and_close)
 			server.write_body("HTTP/1.0", body)
+		end
+		
+		it "refuses to write closed body for a request" do
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(nil)
+			expect(body).to receive(:close)
+			
+			# A request body cannot be delimited by closing the connection, so nothing should be written:
+			expect do
+				server.write_body("HTTP/1.0", body, false, nil, true)
+			end.to raise_exception(Protocol::HTTP1::ProtocolError, message: be =~ /unknown length/)
+			
+			expect(server).to be(:open?)
+			server.close
+			expect(client.stream.read).to be == ""
+		end
+		
+		it "can write chunked body for a request" do
+			expect(body).to receive(:empty?).and_return(false)
+			expect(body).to receive(:length).and_return(nil)
+			
+			expect(server).to receive(:write_chunked_body)
+			server.write_body("HTTP/1.1", body, false, nil, true)
 		end
 	end
 	
@@ -737,6 +761,58 @@ describe Protocol::HTTP1::Connection do
 		body = response.last
 		expect(body.join).to be == "Hello World"
 		expect(client).to be(:closed?)
+	end
+	
+	with "HTTP/1.0 request body" do
+		it "can write a request body of known length" do
+			client.write_request("localhost", "POST", "/", "HTTP/1.0", {"connection" => "keep-alive"})
+			
+			body = Protocol::HTTP::Body::Buffered.new(["Hello World"])
+			client.write_body("HTTP/1.0", body, false, nil, true)
+			expect(client).to be(:half_closed_local?)
+			
+			authority, method, path, version, headers, body = server.read_request
+			expect(method).to be == "POST"
+			expect(body).to be_a(Protocol::HTTP1::Body::Fixed)
+			expect(body.join).to be == "Hello World"
+			expect(server).to be(:persistent)
+		end
+		
+		it "can write an empty request body of unknown length" do
+			client.write_request("localhost", "POST", "/", "HTTP/1.0", {})
+			
+			body = Protocol::HTTP::Body::Writable.new
+			body.close_write
+			
+			client.write_body("HTTP/1.0", body, false, nil, true)
+			expect(client).to be(:half_closed_local?)
+			
+			authority, method, path, version, headers, body = server.read_request
+			expect(body).to be_nil
+			expect(server).to be(:persistent)
+		end
+		
+		it "refuses to write a request body of unknown length" do
+			client.write_request("localhost", "POST", "/", "HTTP/1.0", {"connection" => "keep-alive"})
+			
+			# Without a content length, the server would treat these bytes as the start of the next request:
+			body = Protocol::HTTP::Body::Writable.new
+			body.write "GET /other HTTP/1.1\r\nhost: localhost\r\n\r\n"
+			body.close_write
+			
+			expect do
+				client.write_body("HTTP/1.0", body, false, nil, true)
+			end.to raise_exception(Protocol::HTTP1::ProtocolError, message: be =~ /unknown length/)
+			
+			expect(body).to be(:closed?)
+			
+			# The connection is still open, so the caller is responsible for closing it:
+			expect(client).to be(:open?)
+			client.close
+			
+			# Only the request head was written; none of the body bytes reached the server:
+			expect(server.stream.read).to be == "POST / HTTP/1.0\r\nhost: localhost\r\nconnection: keep-alive\r\n"
+		end
 	end
 	
 	it "raises RefusedError when the stream is broken" do
