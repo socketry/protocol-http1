@@ -979,7 +979,7 @@ module Protocol
 					return read_tunnel_body
 				end
 				
-				return read_body(headers, true, version)
+				return read_body(headers, false, version)
 			end
 			
 			# Read the body of the request.
@@ -1010,23 +1010,23 @@ module Protocol
 				
 				# 6.  If this is a request message and none of the above are true, then
 				# the message body length is zero (no message body is present).
-				return read_body(headers, false, version)
+				return read_body(headers, true, version)
 			end
 			
 			# Read the body of the message.
 			#
 			# - The `transfer-encoding` header is used to determine if the body is chunked.
 			# - Otherwise, if the `content-length` is present, the body is read until the content length is reached.
-			# - Otherwise, if `remainder` is true, the body is read until the connection is closed.
+			# - Otherwise, if the message is a response, the body is read until the connection is closed.
 			#
 			# Invalid framing is rejected and marks the connection as non-persistent, since the rest of the stream can no longer be delimited.
 			#
 			# @parameter headers [Hash] the headers of the message.
-			# @parameter remainder [Boolean] whether to read the remainder of the body, i.e. the message is a response which may be delimited by closing the connection.
+			# @parameter request [Boolean] whether the message is a request, which cannot be delimited by closing the connection.
 			# @parameter version [String | Nil] the HTTP version of the message, if known.
 			# @returns [Object] the body.
 			# @raises [BadRequest] if the message framing is invalid.
-			def read_body(headers, remainder = false, version = nil)
+			def read_body(headers, request = false, version = nil)
 				# 3.  If a Transfer-Encoding header field is present and the chunked
 				# transfer coding (Section 4.1) is the final encoding, the message
 				# body length is determined by reading and decoding the chunked
@@ -1062,17 +1062,7 @@ module Protocol
 						raise BadRequest, "Message contains chunked transfer encoding more than once!"
 					end
 					
-					if remainder
-						if transfer_encoding.last == CHUNKED
-							return read_chunked_body(headers)
-						else
-							# If a Transfer-Encoding header field is present in a response and
-							# the chunked transfer coding is not the final encoding, the
-							# message body length is determined by reading the connection until
-							# it is closed by the server.
-							return read_remainder_body
-						end
-					else
+					if request
 						# A request body may only use the chunked transfer coding on its
 						# own: we do not decode any other transfer coding, and a server
 						# that receives a transfer coding it does not understand SHOULD
@@ -1087,6 +1077,16 @@ module Protocol
 						else
 							@persistent = false
 							raise BadRequest, "Request transfer encoding must be chunked!"
+						end
+					else
+						if transfer_encoding.last == CHUNKED
+							return read_chunked_body(headers)
+						else
+							# If a Transfer-Encoding header field is present in a response and
+							# the chunked transfer coding is not the final encoding, the
+							# message body length is determined by reading the connection until
+							# it is closed by the server.
+							return read_remainder_body
 						end
 					end
 				end
@@ -1106,7 +1106,7 @@ module Protocol
 				end
 				
 				# http://tools.ietf.org/html/rfc2068#section-19.7.1.1
-				if remainder
+				unless request
 					# 7.  Otherwise, this is a response message without a declared message
 					# body length, so the message body length is determined by the
 					# number of octets received prior to the server closing the

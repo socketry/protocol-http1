@@ -629,7 +629,7 @@ describe Protocol::HTTP1::Connection do
 	with "#read_body" do
 		# Callers using the original signature do not pass a version, so framing must still be validated without it.
 		it "reads chunked request body without a version" do
-			body = server.read_body({"transfer-encoding" => ["chunked"]}, false)
+			body = server.read_body({"transfer-encoding" => ["chunked"]}, true)
 			
 			expect(body).to be_a(Protocol::HTTP1::Body::Chunked)
 			expect(server).to be(:persistent)
@@ -637,14 +637,14 @@ describe Protocol::HTTP1::Connection do
 		
 		it "fails with non-chunked request transfer-encoding without a version" do
 			expect do
-				server.read_body({"transfer-encoding" => ["gzip"]}, false)
+				server.read_body({"transfer-encoding" => ["gzip"]}, true)
 			end.to raise_exception(Protocol::HTTP1::BadRequest, message: be =~ /must be chunked/)
 			
 			expect(server).not.to be(:persistent)
 		end
 		
 		it "reads non-chunked response transfer-encoding until closed without a version" do
-			body = client.read_body({"transfer-encoding" => ["gzip"]}, true)
+			body = client.read_body({"transfer-encoding" => ["gzip"]}, false)
 			
 			expect(body).to be_a(Protocol::HTTP1::Body::Remainder)
 			expect(client).not.to be(:persistent)
@@ -771,7 +771,7 @@ describe Protocol::HTTP1::Connection do
 				"upgrade" => be == ["text"]
 			)
 			
-			body = client.read_body(headers, true)
+			body = client.read_body(headers, false)
 			expect(body.join).to be == "Hello World!"
 		end
 	end
@@ -793,7 +793,7 @@ describe Protocol::HTTP1::Connection do
 				"connection" => be == ["close"],
 			)
 			
-			body = client.read_body(headers, true)
+			body = client.read_body(headers, false)
 			expect(body.join).to be == "Hello World!"
 		end
 	end
@@ -813,7 +813,7 @@ describe Protocol::HTTP1::Connection do
 			headers = client.read_headers
 			expect(headers).to be(:empty?)
 			
-			body = client.read_body(headers, true)
+			body = client.read_body(headers, false)
 			expect(body.join).to be == "Hello World!"
 		end
 		
@@ -848,7 +848,7 @@ describe Protocol::HTTP1::Connection do
 			headers = client.read_headers
 			expect(headers).to be == [["connection", "keep-alive"], ["content-length", "0"]]
 			
-			body = client.read_body(headers, true)
+			body = client.read_body(headers, false)
 			expect(body).to be_nil
 		end
 		
@@ -860,7 +860,7 @@ describe Protocol::HTTP1::Connection do
 			headers = client.read_headers
 			expect(headers).to be == [["connection", "keep-alive"], ["content-length", "0"]]
 			
-			body = client.read_body(headers, true)
+			body = client.read_body(headers, false)
 			expect(body).to be_nil
 		end
 		
