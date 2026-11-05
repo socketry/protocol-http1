@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-  - `write_body` now raises `ProtocolError` when writing an HTTP/1.0 request body of unknown length, rather than writing it without any framing. A request body cannot be delimited by closing the connection, so such bodies must be buffered to determine their length. HTTP/1.0 responses written after `write_response` are unaffected and continue to be delimited by closing the connection; calling `write_body` without first writing a request or response head is also rejected.
+  - `Protocol::HTTP1::Connection#write_body` accepts a trailing `request` argument; when true, an HTTP/1.0 body of unknown length raises `ProtocolError` instead of being written close-delimited, since a request body cannot be delimited by closing the connection and the server would otherwise parse it as the next request. Clients should pass `request = true` when writing request bodies (`async-http` is being updated accordingly); response bodies are unaffected.
 
 ## v0.41.0
 
