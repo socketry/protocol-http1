@@ -480,7 +480,7 @@ module Protocol
 				version, status, reason = read_line.split(/\s+/, 3)
 				
 				unless version&.match?(VALID_HTTP_VERSION)
-					raise BadRequest, "Invalid response version: #{version.inspect}"
+					raise BadRequest, "Invalid response version!"
 				end
 				
 				status = Integer(status)
@@ -1059,7 +1059,7 @@ module Protocol
 					# framing cannot be trusted.
 					if transfer_encoding.count(CHUNKED) > 1
 						@persistent = false
-						raise BadRequest, "Message contains chunked transfer encoding more than once: #{transfer_encoding.inspect}"
+						raise BadRequest, "Message contains chunked transfer encoding more than once!"
 					end
 					
 					if remainder
@@ -1086,7 +1086,7 @@ module Protocol
 							return read_chunked_body(headers)
 						else
 							@persistent = false
-							raise BadRequest, "Request transfer encoding must be chunked: #{transfer_encoding.inspect}"
+							raise BadRequest, "Request transfer encoding must be chunked!"
 						end
 					end
 				end
